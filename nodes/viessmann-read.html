@@ -1,0 +1,227 @@
+<script type="text/javascript">
+    RED.nodes.registerType('viessmann-read', {
+        category: 'Viessmann',
+        color: '#ff7f50',
+        icon: 'font-awesome/fa-thermometer-half',
+        defaults: {
+            name: { value: '' },
+            server: { value: '', type: 'viessmann-config', required: true },
+            selection: { value: 'all' },
+            features: { value: [] },
+            pattern: { value: '' },
+            outputFormat: { value: 'object' },
+            onlyAvailable: { value: true },
+            topicPrefix: { value: 'viessmann' },
+            interval: { value: 300, validate: RED.validators.number() },
+            startupDelay: { value: 10, validate: RED.validators.number() },
+            staleAfter: { value: 900, validate: RED.validators.number() },
+            forceRefresh: { value: false }
+        },
+        inputs: 1,
+        outputs: 2,
+        outputLabels: ['Daten', 'Status / Fehler'],
+        label: function () {
+            return this.name || 'Viessmann lesen';
+        },
+        oneditprepare: function () {
+            var node = this;
+
+            $('#node-input-features-list').editableList({
+                addItem: function (row, index, data) {
+                    $('<input/>', {
+                        class: 'vm-feature-entry', type: 'text', style: 'width:100%',
+                        placeholder: 'z. B. heating.dhw.temperature.main'
+                    }).val(typeof data === 'string' ? data : '').appendTo(row);
+                },
+                removable: true,
+                sortable: true
+            });
+            (node.features || []).forEach(function (f) {
+                $('#node-input-features-list').editableList('addItem', f);
+            });
+
+            function toggleSelection() {
+                var mode = $('#node-input-selection').val();
+                $('.vm-row-selected').toggle(mode === 'selected');
+                $('.vm-row-pattern').toggle(mode === 'pattern');
+            }
+            $('#node-input-selection').on('change', toggleSelection);
+            toggleSelection();
+
+            // Auswahl direkt vom Gerät – der Nutzer sieht nur, was seine Anlage liefert.
+            $('#vm-load-features').on('click', function () {
+                var serverId = $('#node-input-server').val();
+                var $info = $('#vm-features-info');
+                if (!serverId || serverId === '_ADD_') {
+                    $info.css('color', '#c62828').text('Bitte zuerst eine Verbindung auswählen und Deploy drücken.');
+                    return;
+                }
+                $info.css('color', '#888').text('Lade Datenpunkte vom Gerät …');
+                $.getJSON('viessmann/' + serverId + '/features?refresh=true')
+                    .done(function (d) {
+                        var $sel = $('#vm-feature-picker').empty();
+                        d.features.forEach(function (f) {
+                            if (!f.available) return;
+                            var label = f.feature + (f.writable ? '  ✎' : '') + (f.deprecated ? '  ⚠ veraltet' : '');
+                            $('<option/>').val(f.feature).text(label).appendTo($sel);
+                        });
+                        $info.css('color', '#2e7d32').text(
+                            d.summary.available + ' von ' + d.summary.total + ' Datenpunkten verfügbar, ' +
+                            d.summary.writable + ' beschreibbar, ' + d.summary.deprecated + ' veraltet.');
+                    })
+                    .fail(function (x) {
+                        $info.css('color', '#c62828').text('Fehler: ' +
+                            ((x.responseJSON && x.responseJSON.error) || 'Verbindung noch nicht gespeichert.'));
+                    });
+            });
+
+            $('#vm-add-selected').on('click', function () {
+                ($('#vm-feature-picker').val() || []).forEach(function (f) {
+                    $('#node-input-features-list').editableList('addItem', f);
+                });
+            });
+        },
+        oneditsave: function () {
+            var features = [];
+            $('#node-input-features-list').editableList('items').each(function () {
+                var v = $(this).find('.vm-feature-entry').val();
+                if (v && v.trim()) features.push(v.trim());
+            });
+            this.features = features;
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="viessmann-read">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-cog"></i> Verbindung</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <hr>
+    <div class="form-row">
+        <label for="node-input-selection"><i class="fa fa-filter"></i> Auswahl</label>
+        <select id="node-input-selection">
+            <option value="all">Alle Datenpunkte</option>
+            <option value="selected">Nur ausgewählte Datenpunkte</option>
+            <option value="pattern">Nach Muster (z. B. heating.dhw.*)</option>
+        </select>
+    </div>
+    <div class="form-row vm-row-pattern">
+        <label for="node-input-pattern"><i class="fa fa-asterisk"></i> Muster</label>
+        <input type="text" id="node-input-pattern" placeholder="heating.dhw.*, heating.circuits.0.*">
+    </div>
+    <div class="vm-row-selected">
+        <div class="form-row">
+            <button type="button" class="red-ui-button" id="vm-load-features">
+                <i class="fa fa-refresh"></i> Datenpunkte vom Gerät laden
+            </button>
+            <span id="vm-features-info" style="margin-left:8px;font-size:0.85em"></span>
+        </div>
+        <div class="form-row">
+            <select id="vm-feature-picker" multiple size="8" style="width:100%"></select>
+        </div>
+        <div class="form-row">
+            <button type="button" class="red-ui-button" id="vm-add-selected">
+                <i class="fa fa-plus"></i> Markierte übernehmen
+            </button>
+        </div>
+        <div class="form-row">
+            <label style="width:100%"><i class="fa fa-list"></i> Gewählte Datenpunkte</label>
+            <ol id="node-input-features-list"></ol>
+        </div>
+    </div>
+    <hr>
+    <div class="form-row">
+        <label for="node-input-outputFormat"><i class="fa fa-sign-out"></i> Ausgabe</label>
+        <select id="node-input-outputFormat">
+            <option value="object">Objekt je Datenpunkt (Standard)</option>
+            <option value="flat">Flach: Name → Wert</option>
+            <option value="split">Eine Nachricht je Datenpunkt (für MQTT)</option>
+            <option value="raw">Rohdaten der API (Diagnose)</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-topicPrefix"><i class="fa fa-tags"></i> Topic-Präfix</label>
+        <input type="text" id="node-input-topicPrefix" placeholder="viessmann">
+    </div>
+    <div class="form-row">
+        <label for="node-input-onlyAvailable" style="width:auto">
+            <input type="checkbox" id="node-input-onlyAvailable" style="width:auto;vertical-align:top">
+            Nur tatsächlich vorhandene Datenpunkte ausgeben
+        </label>
+    </div>
+    <hr>
+    <div class="form-row">
+        <label for="node-input-interval"><i class="fa fa-repeat"></i> Intervall</label>
+        <input type="number" id="node-input-interval" min="0" style="width:90px"> Sekunden (0 = nur auf Eingang)
+    </div>
+    <div class="form-row">
+        <label for="node-input-startupDelay"><i class="fa fa-play"></i> Startverzögerung</label>
+        <input type="number" id="node-input-startupDelay" min="0" style="width:90px"> Sekunden
+    </div>
+    <div class="form-row">
+        <label for="node-input-staleAfter"><i class="fa fa-exclamation-triangle"></i> Veraltet nach</label>
+        <input type="number" id="node-input-staleAfter" min="0" style="width:90px"> Sekunden
+    </div>
+    <div class="form-row">
+        <label for="node-input-forceRefresh" style="width:auto">
+            <input type="checkbox" id="node-input-forceRefresh" style="width:auto;vertical-align:top">
+            Cache umgehen und immer frisch abfragen
+        </label>
+    </div>
+</script>
+
+<script type="text/html" data-help-name="viessmann-read">
+    <p>Liest Datenpunkte der Heizungsanlage über die Viessmann IoT API. Die Anmeldung erledigt die
+    Konfigurations-Node vollautomatisch.</p>
+
+    <h3>Eingang</h3>
+    <dl class="message-properties">
+        <dt class="optional">features <span class="property-type">array</span></dt>
+        <dd>Überschreibt die im Node gewählte Liste für diesen einen Aufruf.</dd>
+        <dt class="optional">pattern <span class="property-type">string</span></dt>
+        <dd>Überschreibt das Muster, z. B. <code>heating.circuits.0.*</code>.</dd>
+        <dt class="optional">refresh <span class="property-type">boolean</span></dt>
+        <dd><code>true</code> umgeht den Cache und fragt frisch ab.</dd>
+    </dl>
+
+    <h3>Ausgang 1 – Daten</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>Abhängig vom gewählten Format:
+        <ul>
+            <li><b>Objekt je Datenpunkt</b>: <code>payload["heating.dhw.temperature.main"].values.value</code></li>
+            <li><b>Flach</b>: <code>payload["heating.dhw.temperature.main"] = 58</code></li>
+            <li><b>Einzeln</b>: je Datenpunkt eine Nachricht mit <code>msg.topic</code> und
+                <code>msg.payload</code> = Wert – direkt an eine MQTT-Out-Node anschließbar</li>
+            <li><b>Rohdaten</b>: unveränderte Antwort der API, das wichtigste Werkzeug bei der Fehlersuche</li>
+        </ul></dd>
+        <dt>viessmann <span class="property-type">object</span></dt>
+        <dd>Zeitstempel, Anzahl und Zusammenfassung (<code>total</code>, <code>available</code>,
+        <code>writable</code>, <code>deprecated</code>).</dd>
+    </dl>
+
+    <h3>Ausgang 2 – Status und Fehler</h3>
+    <p>Meldungen erscheinen nur bei einer <b>Zustandsänderung</b>, nicht in jedem Zyklus. Enthalten sind
+    <code>error</code>, <code>code</code>, <code>statusCode</code>, <code>lastSuccessAgeSeconds</code> und
+    <code>stale</code>.</p>
+
+    <h3>Nicht jedes Gerät kann alles</h3>
+    <p>Die API liefert für jede Anlage dieselbe große Liste und markiert mit <code>isEnabled: false</code>,
+    was das Gerät nicht unterstützt. Mit „Nur tatsächlich vorhandene Datenpunkte ausgeben“ verschwinden
+    solche Einträge. Zum Erkunden den Haken entfernen und die Rohdaten ansehen.</p>
+
+    <h3>Intervall</h3>
+    <p>Die Anlage meldet neue Werte ohnehin nur alle paar Minuten, und die API hat ein Tageslimit.
+    <b>300 Sekunden</b> sind ein guter Startwert; unter 60 Sekunden wird es eng.</p>
+
+    <h3>Veraltete Datenpunkte</h3>
+    <p>Viessmann ersetzt Datenpunkte gelegentlich, etwa
+    <code>heating.dhw.sensors.temperature.hotWaterStorage</code> durch
+    <code>heating.dhw.sensors.temperature.dhwCylinder</code>. Betroffene Einträge tragen
+    <code>deprecated.replacedBy</code> und werden im Editor mit ⚠ markiert.</p>
+</script>

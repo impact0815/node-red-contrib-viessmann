@@ -1,0 +1,249 @@
+<script type="text/javascript">
+    RED.nodes.registerType('viessmann-write', {
+        category: 'Viessmann',
+        color: '#ff7f50',
+        icon: 'font-awesome/fa-pencil',
+        defaults: {
+            name: { value: '' },
+            server: { value: '', type: 'viessmann-config', required: true },
+            feature: { value: '' },
+            command: { value: '' },
+            paramSource: { value: 'payload' },
+            fixedParams: { value: '' },
+            skipIfUnchanged: { value: true },
+            dryRun: { value: false },
+            topicPrefix: { value: 'viessmann' }
+        },
+        inputs: 1,
+        outputs: 2,
+        outputLabels: ['Ergebnis', 'Fehler'],
+        label: function () {
+            if (this.name) return this.name;
+            if (this.feature && this.command) return this.command + ' → ' + this.feature.split('.').slice(-2).join('.');
+            return 'Viessmann schreiben';
+        },
+        oneditprepare: function () {
+            var node = this;
+            var catalog = {};
+
+            function renderCommands(selectedCommand) {
+                var f = catalog[$('#node-input-feature').val()];
+                var $cmd = $('#node-input-command').empty();
+                if (!f) {
+                    $('<option/>').val(node.command || '').text(node.command || '(erst Datenpunkte laden)').appendTo($cmd);
+                    return;
+                }
+                f.commands.forEach(function (c) {
+                    $('<option/>').val(c.name).text(c.name + (c.executable ? '' : '  (derzeit nicht ausführbar)')).appendTo($cmd);
+                });
+                if (selectedCommand) $cmd.val(selectedCommand);
+                renderConstraints();
+            }
+
+            function renderConstraints() {
+                var f = catalog[$('#node-input-feature').val()];
+                var $box = $('#vm-constraints').empty();
+                if (!f) return;
+                var c = f.commands.filter(function (x) { return x.name === $('#node-input-command').val(); })[0];
+                if (!c) return;
+                var names = Object.keys(c.params || {});
+                if (!names.length) {
+                    $box.append('<div>Dieser Befehl erwartet keine Parameter. <code>msg.payload = {}</code> genügt.</div>');
+                    return;
+                }
+                var example = {};
+                var html = '<table style="width:100%;font-size:0.85em"><tr><th align="left">Parameter</th><th align="left">Typ</th><th align="left">Grenzen</th></tr>';
+                names.forEach(function (n) {
+                    var p = c.params[n];
+                    var cs = p.constraints || {};
+                    var limits = [];
+                    if (cs.min !== undefined) limits.push('min ' + cs.min);
+                    if (cs.max !== undefined) limits.push('max ' + cs.max);
+                    if (cs.stepping !== undefined) limits.push('Schritt ' + cs.stepping);
+                    if (cs.enum) limits.push(cs.enum.join(' | '));
+                    if (cs.minLength !== undefined) limits.push('min. Länge ' + cs.minLength);
+                    if (cs.maxLength !== undefined) limits.push('max. Länge ' + cs.maxLength);
+                    if (cs.regEx) limits.push('Muster ' + cs.regEx);
+                    html += '<tr><td><code>' + n + '</code>' + (p.required ? ' *' : '') + '</td><td>' +
+                            (p.type || '?') + '</td><td>' + (limits.join(', ') || '–') + '</td></tr>';
+                    example[n] = cs.min !== undefined ? cs.min : (cs.enum ? cs.enum[0] : (p.type === 'number' ? 0 : ''));
+                });
+                html += '</table><div style="margin-top:6px">Beispiel: <code>msg.payload = ' + JSON.stringify(example) + '</code></div>';
+                $box.html(html);
+            }
+
+            $('#vm-load-catalog').on('click', function () {
+                var serverId = $('#node-input-server').val();
+                var $info = $('#vm-write-info');
+                if (!serverId || serverId === '_ADD_') {
+                    $info.css('color', '#c62828').text('Bitte zuerst eine Verbindung auswählen und Deploy drücken.');
+                    return;
+                }
+                $info.css('color', '#888').text('Lade beschreibbare Datenpunkte …');
+                $.getJSON('viessmann/' + serverId + '/features?refresh=true')
+                    .done(function (d) {
+                        catalog = {};
+                        var $sel = $('#node-input-feature').empty();
+                        var count = 0;
+                        d.features.forEach(function (f) {
+                            if (!f.available || !f.writable) return;
+                            catalog[f.feature] = f;
+                            $('<option/>').val(f.feature).text(f.feature).appendTo($sel);
+                            count++;
+                        });
+                        if (node.feature && !catalog[node.feature]) {
+                            $('<option/>').val(node.feature).text(node.feature + '  (aktuell nicht verfügbar)').appendTo($sel);
+                        }
+                        $sel.val(node.feature || $sel.find('option:first').val());
+                        renderCommands(node.command);
+                        $info.css('color', '#2e7d32').text(count + ' beschreibbare Datenpunkte gefunden.');
+                    })
+                    .fail(function (x) {
+                        $info.css('color', '#c62828').text('Fehler: ' +
+                            ((x.responseJSON && x.responseJSON.error) || 'Verbindung noch nicht gespeichert.'));
+                    });
+            });
+
+            $('#node-input-feature').on('change', function () { renderCommands(); });
+            $('#node-input-command').on('change', renderConstraints);
+
+            if (node.feature) $('<option/>').val(node.feature).text(node.feature).appendTo($('#node-input-feature'));
+            if (node.command) $('<option/>').val(node.command).text(node.command).appendTo($('#node-input-command'));
+            $('#node-input-feature').val(node.feature);
+            $('#node-input-command').val(node.command);
+
+            function toggleParams() {
+                $('.vm-row-fixed').toggle($('#node-input-paramSource').val() === 'fixed');
+            }
+            $('#node-input-paramSource').on('change', toggleParams);
+            toggleParams();
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="viessmann-write">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-cog"></i> Verbindung</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <hr>
+    <div class="form-row">
+        <button type="button" class="red-ui-button" id="vm-load-catalog">
+            <i class="fa fa-refresh"></i> Beschreibbare Datenpunkte laden
+        </button>
+        <span id="vm-write-info" style="margin-left:8px;font-size:0.85em"></span>
+    </div>
+    <div class="form-row">
+        <label for="node-input-feature"><i class="fa fa-crosshairs"></i> Datenpunkt</label>
+        <select id="node-input-feature" style="width:70%"></select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-command"><i class="fa fa-bolt"></i> Befehl</label>
+        <select id="node-input-command" style="width:70%"></select>
+    </div>
+    <div class="form-row">
+        <label style="width:100%"><i class="fa fa-info-circle"></i> Erlaubte Parameter</label>
+        <div id="vm-constraints" style="border:1px solid #ddd;padding:8px;border-radius:4px;background:#fafafa"></div>
+    </div>
+    <hr>
+    <div class="form-row">
+        <label for="node-input-paramSource"><i class="fa fa-sliders"></i> Parameter</label>
+        <select id="node-input-paramSource">
+            <option value="payload">aus msg.payload bzw. msg.params</option>
+            <option value="fixed">fest im Node hinterlegt</option>
+        </select>
+    </div>
+    <div class="form-row vm-row-fixed">
+        <label for="node-input-fixedParams">JSON</label>
+        <input type="text" id="node-input-fixedParams" placeholder='{"temperature": 55}'>
+    </div>
+    <hr>
+    <div class="form-row">
+        <label for="node-input-skipIfUnchanged" style="width:auto">
+            <input type="checkbox" id="node-input-skipIfUnchanged" style="width:auto;vertical-align:top">
+            Nicht schreiben, wenn der Wert bereits anliegt
+        </label>
+    </div>
+    <div class="form-row">
+        <label for="node-input-dryRun" style="width:auto">
+            <input type="checkbox" id="node-input-dryRun" style="width:auto;vertical-align:top">
+            <b>Testlauf</b> – alles prüfen, aber nichts senden
+        </label>
+    </div>
+    <div class="form-row">
+        <label for="node-input-topicPrefix"><i class="fa fa-tags"></i> Topic-Präfix</label>
+        <input type="text" id="node-input-topicPrefix" placeholder="viessmann">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="viessmann-write">
+    <p>Führt Schreibbefehle der Viessmann IoT API aus, zum Beispiel Warmwasser-Solltemperatur setzen,
+    Betriebsart wechseln oder die Zirkulationspumpe über einen Zeitplan schalten.</p>
+
+    <h3>Bevor irgendetwas geschrieben wird</h3>
+    <p>In der Konfigurations-Node muss <b>„Schreibzugriff erlauben“</b> gesetzt sein. Ohne diesen Haken
+    lehnt die Node jeden Befehl ab – ein importierter Beispiel-Flow soll nicht ungefragt an der Heizung drehen.</p>
+
+    <h3>Eingang</h3>
+    <dl class="message-properties">
+        <dt class="optional">feature <span class="property-type">string</span></dt>
+        <dd>Überschreibt den im Node gewählten Datenpunkt.</dd>
+        <dt class="optional">command <span class="property-type">string</span></dt>
+        <dd>Überschreibt den Befehl.</dd>
+        <dt class="optional">params <span class="property-type">object</span></dt>
+        <dd>Parameter des Befehls. Alternativ wird <code>msg.payload</code> verwendet, sofern es ein Objekt ist.</dd>
+    </dl>
+
+    <h3>Beispiele zum Kopieren</h3>
+    <pre>// Warmwasser-Solltemperatur auf 55 °C
+msg.feature = "heating.dhw.temperature.main";
+msg.command = "setTargetTemperature";
+msg.payload = { temperature: 55 };
+
+// Betriebsart des Heizkreises 0
+msg.feature = "heating.circuits.0.operating.modes.active";
+msg.command = "setMode";
+msg.payload = { mode: "dhwAndHeating" };
+
+// Heizkurve setzen
+msg.feature = "heating.circuits.0.heating.curve";
+msg.command = "setCurve";
+msg.payload = { slope: 0.6, shift: 2 };
+
+// Einmalige Warmwasserladung starten
+msg.feature = "heating.dhw.oneTimeCharge";
+msg.command = "activate";
+msg.payload = {};
+
+// Zirkulationspumpe dauerhaft aus (leerer Zeitplan)
+msg.feature = "heating.dhw.pumps.circulation.schedule";
+msg.command = "setSchedule";
+msg.payload = { newSchedule: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] } };</pre>
+
+    <h3>Schutzmechanismen</h3>
+    <ul>
+        <li><b>Positivliste durch die API</b>: nur Befehle, die das Gerät für diesen Datenpunkt anbietet.</li>
+        <li><b>Wertebereiche</b>: Minimum, Maximum, Schrittweite, Auswahllisten und Muster kommen direkt
+        von Viessmann und werden vor dem Senden geprüft.</li>
+        <li><b>Nur bei Änderung schreiben</b>: Liegt der Zielwert bereits an, wird nichts gesendet
+        (<code>skipped: true</code>).</li>
+        <li><b>Mindestabstand</b>: in der Konfiguration einstellbar, schützt vor Schleifen.</li>
+        <li><b>Testlauf</b>: prüft alles und meldet <code>dryRun: true</code>, ohne zu senden.</li>
+    </ul>
+
+    <h3>Ausgang 1 – Ergebnis</h3>
+    <pre>{ ok: true, skipped: false, feature: "...", command: "...",
+  params: {...}, previous: 58, response: {...} }</pre>
+
+    <h3>Ausgang 2 – Fehler</h3>
+    <p>Enthält <code>error</code>, einen <code>code</code> wie <code>WRITE_DISABLED</code>,
+    <code>VALIDATION_FAILED</code>, <code>UNKNOWN_COMMAND</code> oder <code>RATE_GUARD</code> sowie bei
+    Validierungsfehlern die tatsächlichen <code>constraints</code> des Befehls.</p>
+
+    <h3>Hinweis</h3>
+    <p>Änderungen brauchen an der Anlage oft ein bis zwei Minuten, bis sie beim Lesen sichtbar werden.</p>
+</script>

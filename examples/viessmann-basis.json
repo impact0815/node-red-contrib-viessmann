@@ -1,0 +1,356 @@
+[
+    {
+        "id": "vm_tab_1",
+        "type": "tab",
+        "label": "Viessmann Basis",
+        "disabled": false,
+        "info": "Beispiel-Flow für node-red-contrib-viessmann.\n\nVor dem Start die Konfiguration \"Meine Heizung\" öffnen und eintragen:\n- Client-ID (Viessmann Developer Dashboard, reCAPTCHA dort ausschalten)\n- Redirect-URI (exakt wie im Dashboard)\n- Code Challenge (optional, leer = automatisch)\n- ViCare-Benutzername und -Passwort\n\n\"Verbindung testen\" klicken, dann Deploy. Anmeldung und Token-Erneuerung laufen danach vollautomatisch.\n\nDie Schreib-Node steht auf Testlauf und sendet nichts an die Anlage."
+    },
+    {
+        "id": "vm_cfg_1",
+        "type": "viessmann-config",
+        "name": "Meine Heizung",
+        "redirectUri": "http://localhost:1880/authcode",
+        "installationId": "",
+        "gatewaySerial": "",
+        "deviceId": "0",
+        "iamHost": "https://iam.viessmann-climatesolutions.com",
+        "apiHost": "https://api.viessmann-climatesolutions.com",
+        "timeout": 20000,
+        "cacheTtl": 30,
+        "allowWrite": false,
+        "minWriteInterval": 5
+    },
+    {
+        "id": "vm_c_1",
+        "type": "comment",
+        "z": "vm_tab_1",
+        "name": "1) Alles lesen – zum Erkunden der eigenen Anlage",
+        "info": "Rohdaten zeigen, welche Datenpunkte dein Gerät liefert und welche es mit isEnabled=false ablehnt.",
+        "x": 250,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "vm_inject_1",
+        "type": "inject",
+        "z": "vm_tab_1",
+        "name": "jetzt abfragen",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 120,
+        "wires": [
+            [
+                "vm_read_all"
+            ]
+        ]
+    },
+    {
+        "id": "vm_read_all",
+        "type": "viessmann-read",
+        "z": "vm_tab_1",
+        "name": "alle Datenpunkte (Rohdaten)",
+        "server": "vm_cfg_1",
+        "selection": "all",
+        "features": [],
+        "pattern": "",
+        "outputFormat": "raw",
+        "onlyAvailable": false,
+        "topicPrefix": "viessmann",
+        "interval": 0,
+        "startupDelay": 10,
+        "staleAfter": 900,
+        "forceRefresh": true,
+        "x": 400,
+        "y": 120,
+        "wires": [
+            [
+                "vm_debug_raw"
+            ],
+            [
+                "vm_debug_status"
+            ]
+        ]
+    },
+    {
+        "id": "vm_debug_raw",
+        "type": "debug",
+        "z": "vm_tab_1",
+        "name": "Rohdaten",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 660,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "vm_debug_status",
+        "type": "debug",
+        "z": "vm_tab_1",
+        "name": "Status / Fehler",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 680,
+        "y": 150,
+        "wires": [],
+        "statusVal": "payload.error",
+        "statusType": "msg"
+    },
+    {
+        "id": "vm_c_2",
+        "type": "comment",
+        "z": "vm_tab_1",
+        "name": "2) Laufender Betrieb – alle 5 Minuten, eine Nachricht je Wert (MQTT-tauglich)",
+        "info": "",
+        "x": 350,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "vm_read_poll",
+        "type": "viessmann-read",
+        "z": "vm_tab_1",
+        "name": "zyklisch lesen",
+        "server": "vm_cfg_1",
+        "selection": "pattern",
+        "features": [],
+        "pattern": "heating.sensors.*, heating.dhw.*, heating.circuits.0.*, heating.burners.*",
+        "outputFormat": "split",
+        "onlyAvailable": true,
+        "topicPrefix": "heizung",
+        "interval": 300,
+        "startupDelay": 15,
+        "staleAfter": 1800,
+        "forceRefresh": false,
+        "x": 200,
+        "y": 300,
+        "wires": [
+            [
+                "vm_debug_values"
+            ],
+            [
+                "vm_debug_status2"
+            ]
+        ]
+    },
+    {
+        "id": "vm_debug_values",
+        "type": "debug",
+        "z": "vm_tab_1",
+        "name": "Messwerte",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 450,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "vm_debug_status2",
+        "type": "debug",
+        "z": "vm_tab_1",
+        "name": "Status / Fehler",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 470,
+        "y": 330,
+        "wires": []
+    },
+    {
+        "id": "vm_c_3",
+        "type": "comment",
+        "z": "vm_tab_1",
+        "name": "3) Schreiben – steht auf TESTLAUF, sendet nichts an die Anlage",
+        "info": "Zum Scharfschalten: in der Konfiguration \"Schreibzugriff erlauben\" setzen und in der Schreib-Node den Haken \"Testlauf\" entfernen.",
+        "x": 320,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "vm_inject_dhw",
+        "type": "inject",
+        "z": "vm_tab_1",
+        "name": "Warmwasser 55 °C",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "feature",
+                "v": "heating.dhw.temperature.main",
+                "vt": "str"
+            },
+            {
+                "p": "command",
+                "v": "setTargetTemperature",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"temperature\":55}",
+        "payloadType": "json",
+        "x": 170,
+        "y": 480,
+        "wires": [
+            [
+                "vm_write"
+            ]
+        ]
+    },
+    {
+        "id": "vm_inject_mode",
+        "type": "inject",
+        "z": "vm_tab_1",
+        "name": "Betriebsart: nur Warmwasser",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "feature",
+                "v": "heating.circuits.0.operating.modes.active",
+                "vt": "str"
+            },
+            {
+                "p": "command",
+                "v": "setMode",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"mode\":\"dhw\"}",
+        "payloadType": "json",
+        "x": 200,
+        "y": 530,
+        "wires": [
+            [
+                "vm_write"
+            ]
+        ]
+    },
+    {
+        "id": "vm_inject_charge",
+        "type": "inject",
+        "z": "vm_tab_1",
+        "name": "einmalige Warmwasserladung",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "feature",
+                "v": "heating.dhw.oneTimeCharge",
+                "vt": "str"
+            },
+            {
+                "p": "command",
+                "v": "activate",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{}",
+        "payloadType": "json",
+        "x": 200,
+        "y": 580,
+        "wires": [
+            [
+                "vm_write"
+            ]
+        ]
+    },
+    {
+        "id": "vm_write",
+        "type": "viessmann-write",
+        "z": "vm_tab_1",
+        "name": "schreiben (Testlauf)",
+        "server": "vm_cfg_1",
+        "feature": "",
+        "command": "",
+        "paramSource": "payload",
+        "fixedParams": "",
+        "skipIfUnchanged": true,
+        "dryRun": true,
+        "topicPrefix": "heizung",
+        "x": 490,
+        "y": 530,
+        "wires": [
+            [
+                "vm_debug_write"
+            ],
+            [
+                "vm_debug_write_err"
+            ]
+        ]
+    },
+    {
+        "id": "vm_debug_write",
+        "type": "debug",
+        "z": "vm_tab_1",
+        "name": "Ergebnis",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 710,
+        "y": 505,
+        "wires": []
+    },
+    {
+        "id": "vm_debug_write_err",
+        "type": "debug",
+        "z": "vm_tab_1",
+        "name": "Schreibfehler",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 720,
+        "y": 555,
+        "wires": [],
+        "statusVal": "payload.error",
+        "statusType": "msg"
+    }
+]

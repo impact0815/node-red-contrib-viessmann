@@ -1,0 +1,269 @@
+<script type="text/javascript">
+    RED.nodes.registerType('viessmann-config', {
+        category: 'config',
+        defaults: {
+            name: { value: '' },
+            redirectUri: { value: 'http://localhost:1880/authcode', required: true },
+            installationId: { value: '' },
+            gatewaySerial: { value: '' },
+            deviceId: { value: '0' },
+            iamHost: { value: 'https://iam.viessmann-climatesolutions.com', required: true },
+            apiHost: { value: 'https://api.viessmann-climatesolutions.com', required: true },
+            timeout: { value: 20000, validate: RED.validators.number() },
+            cacheTtl: { value: 30, validate: RED.validators.number() },
+            allowWrite: { value: false },
+            minWriteInterval: { value: 5, validate: RED.validators.number() }
+        },
+        credentials: {
+            clientId: { type: 'text' },
+            username: { type: 'text' },
+            password: { type: 'password' },
+            codeChallenge: { type: 'password' },
+            refreshToken: { type: 'password' }
+        },
+        label: function () {
+            return this.name || 'Viessmann API';
+        },
+        oneditprepare: function () {
+            var nodeId = this.id;
+
+            // Code Challenge: 43–128 Zeichen aus A–Z a–z 0–9 - . _ ~
+            $('#vm-gen-challenge').on('click', function () {
+                var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+                var bytes = new Uint8Array(64);
+                window.crypto.getRandomValues(bytes);
+                var out = '';
+                for (var i = 0; i < bytes.length; i++) out += chars.charAt(bytes[i] % chars.length);
+                $('#node-config-input-codeChallenge').val(out).trigger('change');
+                $('#vm-challenge-info').css('color', '#2e7d32').text('Neue Code Challenge erzeugt (64 Zeichen).');
+            });
+
+            $('#viessmann-test').on('click', function () {
+                var $r = $('#viessmann-test-result');
+                $('#viessmann-test').prop('disabled', true);
+                $r.css('color', '#888').html('<i class="fa fa-spinner fa-spin"></i> Melde mich bei Viessmann an …');
+
+                $.ajax({
+                    url: 'viessmann/test',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        id: nodeId,
+                        clientId: $('#node-config-input-clientId').val(),
+                        username: $('#node-config-input-username').val(),
+                        password: $('#node-config-input-password').val(),
+                        codeChallenge: $('#node-config-input-codeChallenge').val(),
+                        redirectUri: $('#node-config-input-redirectUri').val(),
+                        iamHost: $('#node-config-input-iamHost').val(),
+                        apiHost: $('#node-config-input-apiHost').val(),
+                        installationId: $('#node-config-input-installationId').val(),
+                        gatewaySerial: $('#node-config-input-gatewaySerial').val(),
+                        deviceId: $('#node-config-input-deviceId').val()
+                    })
+                }).done(function (d) {
+                    if (d.ok) {
+                        $r.css('color', '#2e7d32').html(
+                            '<b><i class="fa fa-check-circle"></i> Verbindung steht.</b><br>' +
+                            'Installation: ' + d.targets.installationId +
+                            '<br>Gateway: ' + d.targets.gatewaySerial +
+                            '<br>Gerät: ' + d.targets.deviceId +
+                            '<br>Datenpunkte: ' + d.summary.available + ' von ' + d.summary.total +
+                            ' verfügbar, ' + d.summary.writable + ' beschreibbar.'
+                        );
+                    } else {
+                        var done = (d.steps && d.steps.length) ? ('Erledigt: ' + d.steps.join(' → ') + '<br>') : '';
+                        $r.css('color', '#c62828').html(done + '<b>Fehler:</b> ' + $('<div>').text(d.error).html());
+                    }
+                }).fail(function (x) {
+                    $r.css('color', '#c62828').text('Fehler: ' + ((x.responseJSON && x.responseJSON.error) || x.statusText));
+                }).always(function () {
+                    $('#viessmann-test').prop('disabled', false);
+                });
+            });
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="viessmann-config">
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" placeholder="z. B. Vitodens Keller">
+    </div>
+
+    <hr>
+    <h4 style="margin-bottom:4px">Viessmann Developer Portal</h4>
+    <div style="font-size:0.88em;color:#666;margin-bottom:8px">
+        Aus dem <a href="https://app.developer.viessmann-climatesolutions.com" target="_blank" rel="noopener">Developer
+        Dashboard</a> (<i>Your Clients</i>). Dort muss <b>Google reCAPTCHA ausgeschaltet</b> sein.
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-clientId"><i class="fa fa-id-card"></i> Client-ID</label>
+        <input type="text" id="node-config-input-clientId" placeholder="z. B. 4e1a9c…">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-redirectUri"><i class="fa fa-reply"></i> Redirect-URI</label>
+        <input type="text" id="node-config-input-redirectUri" placeholder="http://localhost:1880/authcode">
+    </div>
+    <div class="form-tips" style="margin-bottom:12px;font-size:0.85em">
+        Muss <b>zeichengenau</b> der im Dashboard hinterlegten Adresse entsprechen. Unter dieser Adresse
+        muss nichts lauschen – die Node liest den Code direkt aus der Antwort von Viessmann.
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-codeChallenge"><i class="fa fa-key"></i> Code Challenge</label>
+        <input type="password" id="node-config-input-codeChallenge" style="width:calc(70% - 110px)" placeholder="leer = automatisch">
+        <button type="button" class="red-ui-button" id="vm-gen-challenge" style="width:100px">
+            <i class="fa fa-random"></i> erzeugen
+        </button>
+    </div>
+    <div id="vm-challenge-info" class="form-tips" style="margin-bottom:12px;font-size:0.85em">
+        43 bis 128 Zeichen aus Buchstaben, Ziffern und <code>- . _ ~</code>. Bleibt das Feld leer,
+        erzeugt die Node bei jeder Anmeldung selbst eine.
+    </div>
+
+    <hr>
+    <h4 style="margin-bottom:4px">ViCare-Konto</h4>
+    <div style="font-size:0.88em;color:#666;margin-bottom:8px">
+        Dieselben Zugangsdaten wie in der ViCare-App.
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-username"><i class="fa fa-user"></i> Benutzername</label>
+        <input type="text" id="node-config-input-username" placeholder="E-Mail-Adresse" autocomplete="off">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-password"><i class="fa fa-lock"></i> Passwort</label>
+        <input type="password" id="node-config-input-password" autocomplete="new-password">
+    </div>
+
+    <div class="form-row">
+        <button type="button" class="red-ui-button" id="viessmann-test" style="width:100%">
+            <i class="fa fa-plug"></i> Verbindung testen
+        </button>
+        <div id="viessmann-test-result" style="margin-top:8px;font-size:0.9em;line-height:1.5"></div>
+    </div>
+
+    <hr>
+    <h4>Anlage <small style="font-weight:normal">(leer lassen = automatisch ermitteln)</small></h4>
+    <div class="form-row">
+        <label for="node-config-input-installationId"><i class="fa fa-home"></i> Installation</label>
+        <input type="text" id="node-config-input-installationId" placeholder="automatisch">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-gatewaySerial"><i class="fa fa-wifi"></i> Gateway</label>
+        <input type="text" id="node-config-input-gatewaySerial" placeholder="automatisch">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-deviceId"><i class="fa fa-microchip"></i> Gerät</label>
+        <input type="text" id="node-config-input-deviceId" placeholder="0">
+    </div>
+
+    <hr>
+    <h4>Verhalten</h4>
+    <div class="form-row">
+        <label for="node-config-input-cacheTtl"><i class="fa fa-clock-o"></i> Cache</label>
+        <input type="number" id="node-config-input-cacheTtl" min="0" style="width:80px"> Sekunden
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-timeout"><i class="fa fa-hourglass-half"></i> Timeout</label>
+        <input type="number" id="node-config-input-timeout" min="1000" step="1000" style="width:100px"> ms
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-allowWrite" style="width:auto">
+            <input type="checkbox" id="node-config-input-allowWrite" style="width:auto;vertical-align:top">
+            <b>Schreibzugriff erlauben</b>
+        </label>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-minWriteInterval"><i class="fa fa-shield"></i> Schreibsperre</label>
+        <input type="number" id="node-config-input-minWriteInterval" min="0" style="width:80px"> Sekunden Mindestabstand
+    </div>
+
+    <hr>
+    <details>
+        <summary>Erweiterte Einstellungen (Endpunkte)</summary>
+        <div class="form-row" style="margin-top:8px">
+            <label for="node-config-input-iamHost">IAM-Host</label>
+            <input type="text" id="node-config-input-iamHost">
+        </div>
+        <div class="form-row">
+            <label for="node-config-input-apiHost">API-Host</label>
+            <input type="text" id="node-config-input-apiHost">
+        </div>
+    </details>
+    <input type="password" id="node-config-input-refreshToken" style="display:none">
+</script>
+
+<script type="text/html" data-help-name="viessmann-config">
+    <p>Zentrale Verbindung zur Viessmann IoT API. Die Node meldet sich <b>vollautomatisch</b> an,
+    holt und erneuert alle Token selbst und teilt einen gemeinsamen Datencache mit allen Lese- und
+    Schreib-Nodes.</p>
+
+    <h3>Was eingetragen werden muss</h3>
+    <dl class="message-properties">
+        <dt>Client-ID</dt>
+        <dd>Aus dem <a href="https://app.developer.viessmann-climatesolutions.com" target="_blank" rel="noopener">Viessmann
+        Developer Dashboard</a> unter <i>Your Clients</i>. Dort muss <b>Google reCAPTCHA ausgeschaltet</b>
+        sein – sonst verlangt Viessmann eine Anmeldung im Browser und die Automatik funktioniert nicht.</dd>
+
+        <dt>Redirect-URI</dt>
+        <dd>Genau die Adresse, die im Dashboard beim Client hinterlegt ist – zeichengenau, inklusive
+        <code>http</code>/<code>https</code>, Port und Pfad. Voreingestellt ist
+        <code>http://localhost:1880/authcode</code> aus der Rustimation-Anleitung. Unter dieser Adresse
+        muss <b>nichts</b> lauschen: Die Node folgt der Weiterleitung von Viessmann nicht, sondern liest
+        den Code direkt aus der Antwort. Ein <code>http in</code>-Node ist nicht nötig.</dd>
+
+        <dt>Code Challenge</dt>
+        <dd>Das PKCE-Geheimnis der Anmeldung. Entweder mit <b>erzeugen</b> eine neue anlegen, eine
+        vorhandene aus einem bestehenden Flow übernehmen – oder leer lassen, dann erzeugt die Node bei
+        jeder Anmeldung selbst eine frische.</dd>
+
+        <dt>Benutzername / Passwort</dt>
+        <dd>Die Zugangsdaten der <b>ViCare-App</b>. Beides wird verschlüsselt in den Node-RED-Credentials
+        gespeichert und landet nie in der Flow-Datei.</dd>
+    </dl>
+
+    <h3>Was die Node daraus automatisch macht</h3>
+    <ol>
+        <li><b>Refresh Token vorhanden?</b> Dann wird damit ein Access Token geholt.</li>
+        <li><b>Kein Refresh Token</b> (Erststart) oder von Viessmann <b>abgelehnt</b>? Dann meldet sich die
+        Node mit Benutzer und Passwort an, liest den Authorization Code aus der Weiterleitung und tauscht
+        ihn gegen neue Token.</li>
+        <li>Das Access Token wird kurz vor Ablauf erneuert, nach einem HTTP 401 sofort.</li>
+    </ol>
+    <p>Anders als im ursprünglichen Flow ist die Reihenfolge hier fest eingebaut: Beim allerersten
+    Start gibt es noch kein Refresh Token – die Node geht dann direkt zur Anmeldung über, statt an
+    einer leeren Erneuerung zu scheitern.</p>
+
+    <h3>Weitere Einstellungen</h3>
+    <dl class="message-properties">
+        <dt>Installation / Gateway / Gerät</dt>
+        <dd>Leer lassen – die Node ermittelt die Werte selbst. Gerät <code>0</code> ist bei
+        Vitoconnect-Anlagen der Regler.</dd>
+        <dt>Cache</dt>
+        <dd>So lange wird eine bereits geholte Datenliste wiederverwendet. Empfehlung: mindestens
+        <b>30 Sekunden</b>. Die API hat ein Tageslimit.</dd>
+        <dt>Schreibzugriff erlauben</dt>
+        <dd>Standardmäßig aus. Erst mit diesem Haken führt die Schreib-Node Befehle aus.</dd>
+        <dt>Schreibsperre</dt>
+        <dd>Mindestabstand zwischen zwei Schreibvorgängen, schützt vor Endlosschleifen.</dd>
+    </dl>
+
+    <h3>Symptom → Ursache → Lösung</h3>
+    <dl class="message-properties">
+        <dt>„Viessmann verlangt eine interaktive Anmeldung“</dt>
+        <dd>Google reCAPTCHA ist im Dashboard noch aktiv, oder die Redirect-URI weicht ab.</dd>
+        <dt>„Anmeldung abgelehnt (HTTP 401)“</dt>
+        <dd>ViCare-Benutzername oder Passwort falsch.</dd>
+        <dt>„Code-Einlösung fehlgeschlagen“</dt>
+        <dd>Meist eine abweichende Redirect-URI oder Client-ID.</dd>
+        <dt>„Die Code Challenge ist ungültig“</dt>
+        <dd>Zu kurz oder unerlaubte Zeichen. Neu erzeugen oder leer lassen.</dd>
+        <dt>„Keine Installation gefunden“</dt>
+        <dd>Anlage nicht in der ViCare-App registriert oder anderes Konto verwendet.</dd>
+        <dt>HTTP 429</dt>
+        <dd>Rate Limit. Intervall und Cache erhöhen, eine gemeinsame Konfiguration nutzen.</dd>
+    </dl>
+
+    <p><i>Der Zugangsweg zur API folgt der Anleitung von
+    <a href="https://www.rustimation.eu/index.php/1_zugang_api/" target="_blank" rel="noopener">Rustimation.eu</a>.
+    Vielen Dank für diese Vorarbeit.</i></p>
+</script>

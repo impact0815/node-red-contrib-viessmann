@@ -1,0 +1,34 @@
+{
+  "name": "node-red-contrib-viessmann",
+  "version": "0.3.0",
+  "description": "Node-RED Nodes für die Viessmann IoT API (ViCare / Vitoconnect): vollautomatische Anmeldung, automatische Erkennung der Datenpunkte, Lesen und abgesichertes Schreiben.",
+  "keywords": ["node-red", "viessmann", "vicare", "vitoconnect", "vitodens", "heating", "heizung", "iot", "smarthome", "home-automation"],
+  "license": "MIT",
+  "author": "impact0815",
+  "homepage": "https://github.com/impact0815/node-red-contrib-viessmann#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/impact0815/node-red-contrib-viessmann.git"
+  },
+  "bugs": {
+    "url": "https://github.com/impact0815/node-red-contrib-viessmann/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "main": "lib/api.js",
+  "files": ["lib/", "nodes/", "examples/", "README.md", "CHANGELOG.md", "LICENSE"],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "lint": "node tools/lint.js"
+  },
+  "node-red": {
+    "version": ">=3.0.0",
+    "nodes": {
+      "viessmann-config": "nodes/viessmann-config.js",
+      "viessmann-read": "nodes/viessmann-read.js",
+      "viessmann-write": "nodes/viessmann-write.js"
+    }
+  },
+  "dependencies": {}
+}
