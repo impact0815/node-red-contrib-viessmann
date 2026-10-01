@@ -1,0 +1,60 @@
+{
+    "viessmann-read": {
+        "paletteLabel": "Viessmann lesen",
+        "outputs": {
+            "data": "Daten",
+            "status": "Status / Fehler"
+        },
+        "label": {
+            "name": "Name",
+            "server": "Verbindung",
+            "selection": "Auswahl",
+            "pattern": "Muster",
+            "chosen": "Gewählte Datenpunkte",
+            "output": "Ausgabe",
+            "topicPrefix": "Topic-Präfix",
+            "onlyAvailable": "Nur tatsächlich vorhandene Datenpunkte ausgeben",
+            "interval": "Intervall",
+            "startupDelay": "Startverzögerung",
+            "staleAfter": "Veraltet nach",
+            "forceRefresh": "Cache umgehen und immer frisch abfragen",
+            "seconds": "Sekunden",
+            "secondsZero": "Sekunden (0 = nur auf Eingang)"
+        },
+        "selection": {
+            "all": "Alle Datenpunkte",
+            "selected": "Nur ausgewählte Datenpunkte",
+            "pattern": "Nach Muster (z. B. heating.dhw.*)"
+        },
+        "output": {
+            "object": "Objekt je Datenpunkt (Standard)",
+            "flat": "Flach: Name → Wert",
+            "split": "Eine Nachricht je Datenpunkt (für MQTT)",
+            "raw": "Rohdaten der API (Diagnose)"
+        },
+        "button": {
+            "load": "Datenpunkte vom Gerät laden",
+            "add": "Markierte übernehmen"
+        },
+        "placeholder": {
+            "name": "Name",
+            "pattern": "heating.dhw.*, heating.circuits.0.*",
+            "feature": "z. B. heating.dhw.temperature.main"
+        },
+        "editor": {
+            "needServer": "Bitte zuerst eine Verbindung auswählen und Deploy drücken.",
+            "loading": "Lade Datenpunkte vom Gerät …",
+            "loaded": "__available__ von __total__ Datenpunkten verfügbar, __writable__ beschreibbar, __deprecated__ veraltet.",
+            "deprecated": "veraltet",
+            "notSaved": "Verbindung noch nicht gespeichert.",
+            "error": "Fehler"
+        },
+        "status": {
+            "noServer": "keine Verbindung ausgewählt",
+            "ready": "bereit",
+            "startIn": "Start in __s__ s",
+            "ok": "__time__: __count__ Werte (__available__/__total__ verfügbar)",
+            "restored": "Verbindung wiederhergestellt"
+        }
+    }
+}

@@ -1,0 +1,93 @@
+{
+    "viessmann-write": {
+        "paletteLabel": "Viessmann schreiben",
+        "outputs": {
+            "result": "Ergebnis",
+            "error": "Fehler"
+        },
+        "label": {
+            "name": "Name",
+            "server": "Verbindung",
+            "feature": "Datenpunkt",
+            "command": "Befehl",
+            "allowed": "Erlaubte Parameter",
+            "paramSource": "Parameter",
+            "json": "JSON",
+            "skipIfUnchanged": "Nicht schreiben, wenn der Wert bereits anliegt",
+            "dryRun": "Testlauf",
+            "dryRunHint": "– alles prüfen, aber nichts senden",
+            "topicPrefix": "Topic-Präfix"
+        },
+        "paramSource": {
+            "payload": "aus msg.payload bzw. msg.params",
+            "fixed": "fest im Node hinterlegt"
+        },
+        "button": {
+            "load": "Beschreibbare Datenpunkte laden"
+        },
+        "placeholder": {
+            "name": "Name",
+            "json": "{\"temperature\": 55}"
+        },
+        "editor": {
+            "needServer": "Bitte zuerst eine Verbindung auswählen und Deploy drücken.",
+            "loading": "Lade beschreibbare Datenpunkte …",
+            "loaded": "__count__ beschreibbare Datenpunkte gefunden.",
+            "notAvailable": "aktuell nicht verfügbar",
+            "notExecutable": "derzeit nicht ausführbar",
+            "loadFirst": "(erst Datenpunkte laden)",
+            "noParams": "Dieser Befehl erwartet keine Parameter. <code>msg.payload = {}</code> genügt.",
+            "thParam": "Parameter",
+            "thType": "Typ",
+            "thLimits": "Grenzen",
+            "example": "Beispiel",
+            "min": "min __v__",
+            "max": "max __v__",
+            "step": "Schritt __v__",
+            "modes": "Modi __v__",
+            "maxEntries": "max. __v__ Einträge/Tag",
+            "resolution": "Raster __v__ min",
+            "minLength": "min. Länge __v__",
+            "maxLength": "max. Länge __v__",
+            "regEx": "Muster __v__",
+            "notSaved": "Verbindung noch nicht gespeichert.",
+            "error": "Fehler"
+        },
+        "status": {
+            "noServer": "keine Verbindung ausgewählt",
+            "ready": "bereit",
+            "locked": "Schreiben gesperrt",
+            "unchanged": "__time__: unverändert",
+            "dryRun": "__time__: Testlauf",
+            "ok": "__time__: __command__ ok"
+        },
+        "result": {
+            "skipped": "Zielwert liegt bereits an – es wurde nichts geschrieben."
+        },
+        "error": {
+            "WRITE_DISABLED": "Schreiben ist deaktiviert. In der Viessmann-Konfiguration \"Schreibzugriff erlauben\" aktivieren.",
+            "MISSING_TARGET": "Datenpunkt und Befehl fehlen. Entweder im Node hinterlegen oder per msg.feature / msg.command setzen.",
+            "RATE_GUARD": "Mindestabstand zwischen Schreibvorgängen nicht eingehalten (noch __s__ s).",
+            "BAD_PARAMS": "Feste Parameter sind kein gültiges JSON: __detail__",
+            "UNKNOWN_FEATURE": "Datenpunkt \"__feature__\" existiert an diesem Gerät nicht.",
+            "FEATURE_DISABLED": "Datenpunkt \"__feature__\" wird von diesem Gerät nicht unterstützt (isEnabled=false).",
+            "UNKNOWN_COMMAND": "Befehl \"__command__\" gibt es für \"__feature__\" nicht. Verfügbar: __available__."
+        },
+        "validation": {
+            "UNKNOWN_COMMAND": "Befehl unbekannt.",
+            "NOT_EXECUTABLE": "Befehl \"__command__\" ist laut API derzeit nicht ausführbar (isExecutable=false).",
+            "REQUIRED": "Pflichtparameter \"__name__\" fehlt.",
+            "NOT_A_NUMBER": "Parameter \"__name__\" muss eine Zahl sein (erhalten: __value__).",
+            "BELOW_MIN": "\"__name__\" = __value__ liegt unter dem Minimum __min__.",
+            "ABOVE_MAX": "\"__name__\" = __value__ liegt über dem Maximum __max__.",
+            "STEPPING": "\"__name__\" = __value__ passt nicht zur Schrittweite __step__.",
+            "NOT_A_STRING": "Parameter \"__name__\" muss eine Zeichenkette sein.",
+            "NOT_ALLOWED": "\"__name__\" = \"__value__\" ist nicht erlaubt. Zulässig: __allowed__.",
+            "TOO_SHORT": "\"__name__\" ist zu kurz (min. __min__).",
+            "TOO_LONG": "\"__name__\" ist zu lang (max. __max__).",
+            "PATTERN": "\"__name__\" entspricht nicht dem Muster __pattern__.",
+            "NOT_BOOLEAN": "Parameter \"__name__\" muss true oder false sein.",
+            "UNKNOWN_PARAM": "Unbekannter Parameter \"__name__\". Erlaubt: __allowed__."
+        }
+    }
+}

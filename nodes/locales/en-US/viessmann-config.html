@@ -1,0 +1,101 @@
+<script type="text/html" data-help-name="viessmann-config">
+    <p>Central connection to the Viessmann IoT API. The node logs in <b>fully automatically</b>,
+    fetches and renews all tokens by itself and shares one data cache with all read and write nodes.</p>
+
+    <h3>Prerequisites</h3>
+    <ol>
+        <li>The heating system is registered in the <b>ViCare app</b> and works there.</li>
+        <li>In the <a href="https://app.developer.viessmann-climatesolutions.com" target="_blank" rel="noopener">Viessmann
+        Developer Portal</a> (log in with the same credentials as ViCare) a client exists under
+        <i>Your Clients</i> with <b>Google reCAPTCHA disabled</b> and a redirect URI, e.g.
+        <code>http://localhost:1880/authcode</code>.</li>
+    </ol>
+    <p>If you already set up access following the Rustimation guide, simply reuse your existing
+    client ID, redirect URI and code challenge.</p>
+
+    <h3>What you enter</h3>
+    <dl class="message-properties">
+        <dt>Client ID</dt>
+        <dd>From the Developer Portal. Exactly one client is possible per account.</dd>
+
+        <dt>Redirect URI</dt>
+        <dd>Exactly the address stored for the client in the portal – <b>character for character</b>,
+        including <code>http</code>/<code>https</code>, host name, port, path and any trailing slash.
+        Copying it from the portal is safest. <b>Nothing</b> has to listen at this address: the node
+        does not follow the Viessmann redirect but reads the code directly from the response. This is
+        why it also works in Docker, Home Assistant or ioBroker without opening ports or paths.</dd>
+
+        <dt>Code challenge</dt>
+        <dd>The PKCE secret of the login. Reuse one from an existing flow, create a new one with
+        <b>generate</b> or leave it empty – then the node creates a fresh one for every login.</dd>
+
+        <dt>User name / password</dt>
+        <dd>The credentials of the <b>ViCare app</b>. Both are stored encrypted in the Node-RED
+        credentials and never end up in the flow file or an export.</dd>
+    </dl>
+    <p>Then click <b>Test connection</b> – this works even before the first deploy and reports
+    installation, gateway, device and the number of available data points.</p>
+
+    <h3>What the node does automatically</h3>
+    <ol>
+        <li><b>Refresh token present?</b> Then it is used to get an access token.</li>
+        <li><b>No refresh token</b> (first start) or <b>rejected</b> by Viessmann? Then the node logs in
+        with user name and password, reads the authorization code from the redirect and exchanges it
+        for new tokens.</li>
+        <li>The access token is renewed shortly before it expires, and immediately after an HTTP 401.</li>
+        <li>On network errors the node does <b>not</b> log in again – that would not help.</li>
+    </ol>
+
+    <h3>Further settings</h3>
+    <dl class="message-properties">
+        <dt>Installation / gateway / device</dt>
+        <dd>Leave empty – the node detects the values itself. Device <code>0</code> is the controller
+        on Vitoconnect systems. A fixed value only makes sense with several systems.</dd>
+        <dt>Cache</dt>
+        <dd>How long an already fetched data list is reused. Recommendation: at least
+        <b>30 seconds</b>. The API has a daily limit, and all read nodes of this configuration share
+        the cache.</dd>
+        <dt>Allow write access</dt>
+        <dd>Off by default. Only with this option set does the write node execute commands at all.
+        This way an accidentally imported flow cannot change the heating settings.</dd>
+        <dt>Write lock</dt>
+        <dd>Minimum interval between two writes, protects against endless loops. 5 to 10 seconds are
+        sensible.</dd>
+    </dl>
+
+    <h3>Language</h3>
+    <p>Dialogs, help texts, status and error messages follow the language set in Node-RED
+    (<i>User settings → View → Language</i>) – currently English and German.</p>
+
+    <h3>Symptom → cause → solution</h3>
+    <dl class="message-properties">
+        <dt>"Invalid redirection URI"</dt>
+        <dd>The redirect URI differs from the one in the portal. The error message shows the address
+        that was sent – compare it with the portal and copy it from there.</dd>
+        <dt>"Viessmann requires an interactive login"</dt>
+        <dd>Google reCAPTCHA is still enabled in the portal, or the redirect URI differs.</dd>
+        <dt>"Login rejected (HTTP 401)"</dt>
+        <dd>ViCare user name or password wrong.</dd>
+        <dt>"Redeeming the authorization code failed"</dt>
+        <dd>Usually a different redirect URI or client ID.</dd>
+        <dt>"Invalid code challenge"</dt>
+        <dd>Too short or contains forbidden characters. Generate a new one or leave the field empty.</dd>
+        <dt>"No installation found"</dt>
+        <dd>System not registered in the ViCare app, or a different account was used.</dd>
+        <dt>HTTP 429</dt>
+        <dd>Rate limit. Increase interval and cache, use one shared configuration. Disable old flows
+        that still poll by themselves.</dd>
+        <dt>Timeout / network error</dt>
+        <dd>No internet from the container. Test:
+        <code>docker exec node-red ping -c1 api.viessmann-climatesolutions.com</code></dd>
+    </dl>
+
+    <h3>Disclaimer</h3>
+    <p><b>Use at your own risk – no warranty.</b> Unofficial project, not affiliated with Viessmann.
+    Write commands change the settings of your heating system; no liability is accepted for any
+    damage or costs.</p>
+
+    <p><i>The API access follows the guide by
+    <a href="https://www.rustimation.eu/index.php/1_zugang_api/" target="_blank" rel="noopener">Rustimation.eu</a>.
+    Many thanks for this groundwork.</i></p>
+</script>

@@ -1,0 +1,71 @@
+<script type="text/html" data-help-name="viessmann-read">
+    <p>Liest Datenpunkte der Heizungsanlage über die Viessmann IoT API. Die Anmeldung erledigt die
+    Verbindungs-Konfiguration vollautomatisch.</p>
+
+    <h3>Eingang</h3>
+    <p>Jede Nachricht löst eine Abfrage aus. Zusätzlich kann die Node selbst im eingestellten
+    Intervall abfragen – dann ist kein Inject nötig.</p>
+    <dl class="message-properties">
+        <dt class="optional">features <span class="property-type">array</span></dt>
+        <dd>Überschreibt die im Node gewählte Liste für diesen einen Aufruf.</dd>
+        <dt class="optional">pattern <span class="property-type">string</span></dt>
+        <dd>Überschreibt das Muster, z. B. <code>heating.circuits.0.*</code>.</dd>
+        <dt class="optional">refresh <span class="property-type">boolean</span></dt>
+        <dd><code>true</code> umgeht den Cache und fragt frisch ab.</dd>
+    </dl>
+    <p>Alle anderen Eigenschaften der eingehenden Nachricht (z. B. <code>msg.action</code>) bleiben
+    erhalten und werden am Ausgang weitergegeben. So lässt sich „erst lesen, dann entscheiden“ bequem
+    in einem Flow abbilden.</p>
+
+    <h3>Ausgang 1 – Daten</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>Abhängig vom gewählten Format:
+        <ul>
+            <li><b>Objekt je Datenpunkt</b> (Standard):
+                <code>payload["heating.dhw.temperature.main"].values.value</code>.
+                Jeder Eintrag enthält <code>values</code>, <code>properties</code> (mit Einheiten),
+                <code>commands</code>, <code>available</code>, <code>isEnabled</code>, <code>deprecated</code>.</li>
+            <li><b>Flach</b>: <code>payload["heating.dhw.temperature.main"] = 58</code>;
+                mehrwertige als <code>payload["heating.circuits.0.heating.curve.slope"]</code>.</li>
+            <li><b>Eine Nachricht je Datenpunkt</b>: <code>msg.topic</code> = Präfix/Name und
+                <code>msg.payload</code> = Wert – direkt an eine MQTT-Out-Node anschließbar.</li>
+            <li><b>Rohdaten</b>: unveränderte Antwort der API – das wichtigste Werkzeug bei der Fehlersuche.</li>
+        </ul></dd>
+        <dt>viessmann <span class="property-type">object</span></dt>
+        <dd>Zeitstempel, Anzahl und Zusammenfassung (<code>total</code>, <code>available</code>,
+        <code>writable</code>, <code>deprecated</code>).</dd>
+    </dl>
+
+    <h3>Ausgang 2 – Status und Fehler</h3>
+    <p>Meldungen erscheinen nur bei einer <b>Zustandsänderung</b>, nicht in jedem Zyklus: einmal beim
+    ersten Fehler, einmal bei „Verbindung wiederhergestellt“. Enthalten sind <code>ok</code>,
+    <code>error</code>, <code>code</code>, <code>statusCode</code>, <code>retryAfter</code>,
+    <code>lastSuccessAgeSeconds</code> und <code>stale</code>.</p>
+
+    <h3>Werte in eigenen Function-Nodes auslesen</h3>
+    <pre>const f = msg.payload["heating.sensors.temperature.outside"];
+const aussen = f ? f.values.value : null;   // null, wenn das Gerät den Wert nicht liefert</pre>
+    <p>Bei Datenpunkten mit mehreren Eigenschaften: <code>f.values.slope</code>,
+    <code>f.values.active</code>, <code>f.values.status</code>, <code>f.values.entries</code> (Zeitpläne) usw.</p>
+
+    <h3>Nicht jedes Gerät kann alles</h3>
+    <p>Die API liefert für jede Anlage dieselbe große Liste und markiert mit <code>isEnabled: false</code>,
+    was das Gerät nicht unterstützt. Mit „Nur tatsächlich vorhandene Datenpunkte ausgeben“ verschwinden
+    solche Einträge. Zum Erkunden den Haken entfernen und die Rohdaten ansehen. Echte Nullwerte
+    (z. B. Brennermodulation <code>0</code>) werden korrekt als <code>0</code> geliefert.</p>
+
+    <h3>Intervall und Rate Limit</h3>
+    <p>Die Anlage meldet neue Werte ohnehin nur alle paar Minuten, und die API hat ein Tageslimit.
+    <b>300 Sekunden</b> sind ein guter Startwert; unter 60 Sekunden wird es eng. Mehrere Lese-Nodes an
+    derselben Verbindung teilen sich den Cache und lösen gemeinsam nur eine Abfrage aus. Eine
+    Startverzögerung verhindert, dass beim Hochfahren von Node-RED alles gleichzeitig losfeuert.</p>
+
+    <h3>Veraltete Datenpunkte</h3>
+    <p>Viessmann ersetzt Datenpunkte gelegentlich, etwa
+    <code>heating.dhw.sensors.temperature.hotWaterStorage</code> durch
+    <code>heating.dhw.sensors.temperature.dhwCylinder</code> oder <code>heating.boiler.serial</code>
+    durch <code>device.serial</code>. Betroffene Einträge tragen <code>deprecated.replacedBy</code> und
+    werden im Editor mit ⚠ markiert. Eigene Auswertungen sollten zuerst den neuen und dann den alten
+    Namen probieren.</p>
+</script>

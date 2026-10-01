@@ -1,0 +1,278 @@
+[
+    {
+        "id": "vm_b_tab",
+        "type": "tab",
+        "label": "Viessmann first steps",
+        "disabled": false,
+        "info": "EN: 1) Look at the raw data of your own system. 2) Try write commands in dry run – nothing is sent. After importing, select your connection in all Viessmann nodes.\n\nDE: 1) Rohdaten der eigenen Anlage ansehen. 2) Schreibbefehle im Testlauf ausprobieren – es wird nichts gesendet. Nach dem Import in allen Viessmann-Nodes die eigene Verbindung auswählen."
+    },
+    {
+        "id": "vm_b_c1",
+        "type": "comment",
+        "z": "vm_b_tab",
+        "name": "1) All data points as raw data  /  Alle Datenpunkte als Rohdaten",
+        "info": "",
+        "x": 270,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "vm_b_inj",
+        "type": "inject",
+        "z": "vm_b_tab",
+        "name": "query now",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 100,
+        "wires": [
+            [
+                "vm_b_read"
+            ]
+        ]
+    },
+    {
+        "id": "vm_b_read",
+        "type": "viessmann-read",
+        "z": "vm_b_tab",
+        "name": "all data points (raw)",
+        "server": "",
+        "selection": "all",
+        "features": [],
+        "pattern": "",
+        "outputFormat": "raw",
+        "onlyAvailable": false,
+        "topicPrefix": "viessmann",
+        "interval": 0,
+        "startupDelay": 10,
+        "staleAfter": 900,
+        "forceRefresh": true,
+        "x": 350,
+        "y": 100,
+        "wires": [
+            [
+                "vm_b_raw"
+            ],
+            [
+                "vm_b_status"
+            ]
+        ]
+    },
+    {
+        "id": "vm_b_raw",
+        "type": "debug",
+        "z": "vm_b_tab",
+        "name": "raw data",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 570,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "vm_b_status",
+        "type": "debug",
+        "z": "vm_b_tab",
+        "name": "status / errors",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.error",
+        "statusType": "msg",
+        "x": 590,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "vm_b_c2",
+        "type": "comment",
+        "z": "vm_b_tab",
+        "name": "2) Write in DRY RUN – nothing is sent  /  Schreiben im TESTLAUF",
+        "info": "EN: To go live, enable \"Allow write access\" in the configuration and untick \"Dry run\" in the write node.\n\nDE: Zum Scharfschalten in der Konfiguration \"Schreibzugriff erlauben\" setzen und in der Schreib-Node den Haken \"Testlauf\" entfernen.",
+        "x": 280,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "vm_b_i1",
+        "type": "inject",
+        "z": "vm_b_tab",
+        "name": "hot water 55 °C",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "feature",
+                "v": "heating.dhw.temperature.main",
+                "vt": "str"
+            },
+            {
+                "p": "command",
+                "v": "setTargetTemperature",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"temperature\":55}",
+        "payloadType": "json",
+        "x": 160,
+        "y": 260,
+        "wires": [
+            [
+                "vm_b_write"
+            ]
+        ]
+    },
+    {
+        "id": "vm_b_i2",
+        "type": "inject",
+        "z": "vm_b_tab",
+        "name": "heat up hot water now",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "feature",
+                "v": "heating.dhw.oneTimeCharge",
+                "vt": "str"
+            },
+            {
+                "p": "command",
+                "v": "activate",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{}",
+        "payloadType": "json",
+        "x": 180,
+        "y": 310,
+        "wires": [
+            [
+                "vm_b_write"
+            ]
+        ]
+    },
+    {
+        "id": "vm_b_i3",
+        "type": "inject",
+        "z": "vm_b_tab",
+        "name": "mode: hot water only",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "feature",
+                "v": "heating.circuits.0.operating.modes.active",
+                "vt": "str"
+            },
+            {
+                "p": "command",
+                "v": "setMode",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"mode\":\"dhw\"}",
+        "payloadType": "json",
+        "x": 170,
+        "y": 360,
+        "wires": [
+            [
+                "vm_b_write"
+            ]
+        ]
+    },
+    {
+        "id": "vm_b_write",
+        "type": "viessmann-write",
+        "z": "vm_b_tab",
+        "name": "write (dry run)",
+        "server": "",
+        "feature": "",
+        "command": "",
+        "paramSource": "payload",
+        "fixedParams": "",
+        "skipIfUnchanged": true,
+        "dryRun": true,
+        "topicPrefix": "viessmann",
+        "x": 430,
+        "y": 310,
+        "wires": [
+            [
+                "vm_b_res"
+            ],
+            [
+                "vm_b_err"
+            ]
+        ]
+    },
+    {
+        "id": "vm_b_res",
+        "type": "debug",
+        "z": "vm_b_tab",
+        "name": "result",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 290,
+        "wires": []
+    },
+    {
+        "id": "vm_b_err",
+        "type": "debug",
+        "z": "vm_b_tab",
+        "name": "write errors",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.error",
+        "statusType": "msg",
+        "x": 640,
+        "y": 340,
+        "wires": []
+    }
+]

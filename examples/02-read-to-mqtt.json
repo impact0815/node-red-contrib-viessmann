@@ -1,0 +1,155 @@
+[
+    {
+        "id": "vm_ab_tab",
+        "type": "tab",
+        "label": "Viessmann read → MQTT",
+        "disabled": false,
+        "info": "EN: Reads all data points every 5 minutes and prepares them as MQTT topics viessmann/sensors, /boiler, /dhw and /circuit. After importing, select your connection in \"Viessmann read\" and connect \"to MQTT\" to your MQTT out node.\n\nDE: Liest alle 5 Minuten alle Datenpunkte und bereitet sie als MQTT-Topics viessmann/sensors, /boiler, /dhw und /circuit auf. Nach dem Import in \"Viessmann read\" die eigene Verbindung auswählen und \"to MQTT\" mit der eigenen MQTT-Out-Node verbinden."
+    },
+    {
+        "id": "vm_ab_c",
+        "type": "comment",
+        "z": "vm_ab_tab",
+        "name": "Poll every 5 minutes → MQTT  /  Abfrage alle 5 Minuten → MQTT",
+        "info": "",
+        "x": 290,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "vm_ab_inj",
+        "type": "inject",
+        "z": "vm_ab_tab",
+        "name": "query now",
+        "props": [
+            {
+                "p": "refresh",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 140,
+        "y": 100,
+        "wires": [
+            [
+                "vm_ab_read"
+            ]
+        ]
+    },
+    {
+        "id": "vm_ab_read",
+        "type": "viessmann-read",
+        "z": "vm_ab_tab",
+        "name": "Viessmann read (every 5 min)",
+        "server": "",
+        "selection": "all",
+        "features": [],
+        "pattern": "",
+        "outputFormat": "object",
+        "onlyAvailable": true,
+        "topicPrefix": "viessmann",
+        "interval": 300,
+        "startupDelay": 15,
+        "staleAfter": 1800,
+        "forceRefresh": false,
+        "x": 370,
+        "y": 100,
+        "wires": [
+            [
+                "vm_ab_fn",
+                "vm_ab_raw"
+            ],
+            [
+                "vm_ab_status"
+            ]
+        ]
+    },
+    {
+        "id": "vm_ab_fn",
+        "type": "function",
+        "z": "vm_ab_tab",
+        "name": "prepare for MQTT",
+        "func": "// Prepares the data points for MQTT: four messages with the topics\n// viessmann/sensors, /boiler, /dhw and /circuit.\n// Bereitet die Datenpunkte für MQTT auf (vier Nachrichten, Topics siehe oben).\n//\n// Accepts the output of the Viessmann read node (object per data point) and\n// also the raw form { data: [...] } for test injects.\n\nconst src = msg.payload;\nlet map = {};\nif (src && Array.isArray(src.data)) {\n    for (const f of src.data) map[f.feature] = f;\n} else if (src && typeof src === 'object') {\n    map = src;\n}\n\n// Returns the value of a property, or null if the device does not deliver it.\n// \"features\" may be a list: the first data point with a value wins\n// (new name before deprecated name).\nfunction get(features, prop) {\n    for (const name of [].concat(features)) {\n        const f = map[name];\n        if (!f || f.isEnabled === false || !f.properties) continue;\n        const p = f.properties[prop];\n        if (p && p.value !== undefined && p.value !== null && p.value !== '') return p.value;\n    }\n    return null;\n}\n\n// [field name, data point(s), property] – one line per value, extend as you like.\n// [Feldname, Datenpunkt(e), Eigenschaft] – eine Zeile je Wert, beliebig erweiterbar.\nconst groups = [\n    { topic: 'viessmann/sensors', fields: [\n        ['outsideTemperature', 'heating.sensors.temperature.outside', 'value']\n    ]},\n    { topic: 'viessmann/boiler', fields: [\n        ['boilerTemperature', 'heating.boiler.sensors.temperature.main', 'value'],\n        ['serial', ['device.serial', 'heating.boiler.serial'], 'value'],\n        ['commonSupplyTemperature', 'heating.boiler.sensors.temperature.commonSupply', 'value'],\n        ['targetTemperature', 'heating.boiler.temperature', 'value'],\n        ['burnerModulation', 'heating.burners.0.modulation', 'value'],\n        ['burnerHours', 'heating.burners.0.statistics', 'hours'],\n        ['burnerStarts', 'heating.burners.0.statistics', 'starts']\n    ]},\n    { topic: 'viessmann/dhw', fields: [\n        ['dhwTemperature', ['heating.dhw.sensors.temperature.dhwCylinder', 'heating.dhw.sensors.temperature.hotWaterStorage'], 'value'],\n        ['dhwTarget', 'heating.dhw.temperature.main', 'value'],\n        ['chargingPump', 'heating.dhw.pumps.primary', 'status'],\n        ['circulationPump', 'heating.dhw.pumps.circulation', 'status'],\n        ['charging', 'heating.dhw.charging', 'active']\n    ]},\n    { topic: 'viessmann/circuit', fields: [\n        ['supplyTemperature', 'heating.circuits.0.sensors.temperature.supply', 'value'],\n        ['circuitPump', 'heating.circuits.0.circulation.pump', 'status'],\n        ['activeMode', 'heating.circuits.0.operating.modes.active', 'value'],\n        ['activeProgram', 'heating.circuits.0.operating.programs.active', 'value'],\n        ['comfortActive', 'heating.circuits.0.operating.programs.comfort', 'active'],\n        ['comfortTemperature', 'heating.circuits.0.operating.programs.comfort', 'temperature'],\n        ['ecoActive', 'heating.circuits.0.operating.programs.eco', 'active'],\n        ['curveShift', 'heating.circuits.0.heating.curve', 'shift'],\n        ['curveSlope', 'heating.circuits.0.heating.curve', 'slope']\n    ]}\n];\n\nconst out = [];\nfor (const g of groups) {\n    const values = {};\n    for (const [key, feature, prop] of g.fields) values[key] = get(feature, prop);\n    values.time = new Date().toISOString();\n    out.push({ topic: g.topic, payload: values });\n}\n\nnode.status({ fill: 'green', shape: 'dot',\n    text: new Date().toLocaleTimeString() + ': ' + get('heating.sensors.temperature.outside', 'value') + ' °C' });\nreturn [out];\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 100,
+        "wires": [
+            [
+                "vm_ab_out",
+                "vm_ab_mqtt"
+            ]
+        ]
+    },
+    {
+        "id": "vm_ab_mqtt",
+        "type": "link out",
+        "z": "vm_ab_tab",
+        "name": "to MQTT",
+        "mode": "link",
+        "links": [],
+        "x": 855,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "vm_ab_out",
+        "type": "debug",
+        "z": "vm_ab_tab",
+        "name": "MQTT messages",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 880,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "vm_ab_raw",
+        "type": "debug",
+        "z": "vm_ab_tab",
+        "name": "data points",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "vm_ab_status",
+        "type": "debug",
+        "z": "vm_ab_tab",
+        "name": "status / errors",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.error",
+        "statusType": "msg",
+        "x": 640,
+        "y": 210,
+        "wires": []
+    }
+]

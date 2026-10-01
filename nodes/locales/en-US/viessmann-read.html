@@ -1,0 +1,69 @@
+<script type="text/html" data-help-name="viessmann-read">
+    <p>Reads data points of the heating system via the Viessmann IoT API. The login is handled fully
+    automatically by the connection configuration.</p>
+
+    <h3>Input</h3>
+    <p>Every message triggers a query. In addition the node can poll by itself at the configured
+    interval – then no inject node is needed.</p>
+    <dl class="message-properties">
+        <dt class="optional">features <span class="property-type">array</span></dt>
+        <dd>Overrides the list selected in the node for this one call.</dd>
+        <dt class="optional">pattern <span class="property-type">string</span></dt>
+        <dd>Overrides the pattern, e.g. <code>heating.circuits.0.*</code>.</dd>
+        <dt class="optional">refresh <span class="property-type">boolean</span></dt>
+        <dd><code>true</code> bypasses the cache and queries fresh data.</dd>
+    </dl>
+    <p>All other properties of the incoming message (e.g. <code>msg.action</code>) are kept and passed
+    on at the output. This makes "read first, then decide" easy within one flow.</p>
+
+    <h3>Output 1 – data</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>Depending on the selected format:
+        <ul>
+            <li><b>Object per data point</b> (default):
+                <code>payload["heating.dhw.temperature.main"].values.value</code>.
+                Every entry contains <code>values</code>, <code>properties</code> (with units),
+                <code>commands</code>, <code>available</code>, <code>isEnabled</code>, <code>deprecated</code>.</li>
+            <li><b>Flat</b>: <code>payload["heating.dhw.temperature.main"] = 58</code>;
+                multi-value ones as <code>payload["heating.circuits.0.heating.curve.slope"]</code>.</li>
+            <li><b>One message per data point</b>: <code>msg.topic</code> = prefix/name and
+                <code>msg.payload</code> = value – can be wired directly to an MQTT out node.</li>
+            <li><b>Raw data</b>: the unchanged API response – the most important tool for troubleshooting.</li>
+        </ul></dd>
+        <dt>viessmann <span class="property-type">object</span></dt>
+        <dd>Timestamp, count and summary (<code>total</code>, <code>available</code>,
+        <code>writable</code>, <code>deprecated</code>).</dd>
+    </dl>
+
+    <h3>Output 2 – status and errors</h3>
+    <p>Messages only appear when the <b>state changes</b>, not in every cycle: once on the first error,
+    once on "connection restored". They contain <code>ok</code>, <code>error</code>, <code>code</code>,
+    <code>statusCode</code>, <code>retryAfter</code>, <code>lastSuccessAgeSeconds</code> and
+    <code>stale</code>.</p>
+
+    <h3>Evaluating values in your own function nodes</h3>
+    <pre>const f = msg.payload["heating.sensors.temperature.outside"];
+const outside = f ? f.values.value : null;   // null if the device does not deliver the value</pre>
+    <p>For data points with several properties: <code>f.values.slope</code>, <code>f.values.active</code>,
+    <code>f.values.status</code>, <code>f.values.entries</code> (schedules) and so on.</p>
+
+    <h3>Not every device supports everything</h3>
+    <p>The API returns the same large list for every system and marks with <code>isEnabled: false</code>
+    what the device does not support. With "Output only data points that actually exist" such entries
+    are hidden. To explore, uncheck the option and look at the raw data. Real zero values
+    (e.g. burner modulation <code>0</code>) are delivered correctly as <code>0</code>.</p>
+
+    <h3>Interval and rate limit</h3>
+    <p>The system only reports new values every few minutes anyway, and the API has a daily limit.
+    <b>300 seconds</b> is a good starting value; below 60 seconds it gets tight. Several read nodes on
+    the same connection share the cache and together trigger only one request. A startup delay prevents
+    everything from firing at once when Node-RED starts.</p>
+
+    <h3>Deprecated data points</h3>
+    <p>Viessmann occasionally replaces data points, e.g.
+    <code>heating.dhw.sensors.temperature.hotWaterStorage</code> by
+    <code>heating.dhw.sensors.temperature.dhwCylinder</code> or <code>heating.boiler.serial</code> by
+    <code>device.serial</code>. Affected entries carry <code>deprecated.replacedBy</code> and are marked
+    with ⚠ in the editor. Your own evaluations should try the new name first and then the old one.</p>
+</script>

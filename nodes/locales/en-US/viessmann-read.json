@@ -1,0 +1,60 @@
+{
+    "viessmann-read": {
+        "paletteLabel": "Viessmann read",
+        "outputs": {
+            "data": "Data",
+            "status": "Status / errors"
+        },
+        "label": {
+            "name": "Name",
+            "server": "Connection",
+            "selection": "Selection",
+            "pattern": "Pattern",
+            "chosen": "Selected data points",
+            "output": "Output",
+            "topicPrefix": "Topic prefix",
+            "onlyAvailable": "Output only data points that actually exist",
+            "interval": "Interval",
+            "startupDelay": "Startup delay",
+            "staleAfter": "Stale after",
+            "forceRefresh": "Bypass the cache and always query fresh",
+            "seconds": "seconds",
+            "secondsZero": "seconds (0 = on input only)"
+        },
+        "selection": {
+            "all": "All data points",
+            "selected": "Selected data points only",
+            "pattern": "By pattern (e.g. heating.dhw.*)"
+        },
+        "output": {
+            "object": "Object per data point (default)",
+            "flat": "Flat: name → value",
+            "split": "One message per data point (for MQTT)",
+            "raw": "Raw API data (diagnostics)"
+        },
+        "button": {
+            "load": "Load data points from device",
+            "add": "Add marked"
+        },
+        "placeholder": {
+            "name": "Name",
+            "pattern": "heating.dhw.*, heating.circuits.0.*",
+            "feature": "e.g. heating.dhw.temperature.main"
+        },
+        "editor": {
+            "needServer": "Please select a connection first and press Deploy.",
+            "loading": "Loading data points from the device …",
+            "loaded": "__available__ of __total__ data points available, __writable__ writable, __deprecated__ deprecated.",
+            "deprecated": "deprecated",
+            "notSaved": "Connection not saved yet.",
+            "error": "Error"
+        },
+        "status": {
+            "noServer": "no connection selected",
+            "ready": "ready",
+            "startIn": "start in __s__ s",
+            "ok": "__time__: __count__ values (__available__/__total__ available)",
+            "restored": "Connection restored"
+        }
+    }
+}

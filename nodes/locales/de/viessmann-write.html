@@ -1,0 +1,107 @@
+<script type="text/html" data-help-name="viessmann-write">
+    <p>Führt Schreibbefehle der Viessmann IoT API aus – zum Beispiel Warmwasser-Solltemperatur setzen,
+    Betriebsart wechseln, Zeitpläne für Warmwasser und Zirkulationspumpe ändern oder eine einmalige
+    Warmwasserladung starten.</p>
+
+    <h3>Bevor irgendetwas geschrieben wird</h3>
+    <p>In der Verbindungs-Konfiguration muss <b>„Schreibzugriff erlauben“</b> gesetzt sein. Ohne diesen
+    Haken lehnt die Node jeden Befehl ab (<code>WRITE_DISABLED</code>) – ein importierter Beispiel-Flow
+    soll nicht ungefragt an der Heizung drehen. Neue Befehle am besten zuerst mit aktiviertem
+    <b>Testlauf</b> ausprobieren.</p>
+
+    <h3>Welche Befehle gibt es?</h3>
+    <p><b>Beschreibbare Datenpunkte laden</b> zeigt genau die Datenpunkte und Befehle, die <i>deine</i>
+    Anlage anbietet, samt den erlaubten Parametern und Grenzen. Verschiedene Geräte bieten
+    unterschiedliche Befehle an – die Liste im Dialog ist maßgeblich, nicht die Beispiele unten.</p>
+
+    <h3>Eingang</h3>
+    <dl class="message-properties">
+        <dt class="optional">feature <span class="property-type">string</span></dt>
+        <dd>Überschreibt den im Node gewählten Datenpunkt.</dd>
+        <dt class="optional">command <span class="property-type">string</span></dt>
+        <dd>Überschreibt den Befehl.</dd>
+        <dt class="optional">params <span class="property-type">object</span></dt>
+        <dd>Parameter des Befehls. Alternativ wird <code>msg.payload</code> verwendet, sofern es ein Objekt ist.</dd>
+    </dl>
+
+    <h3>Beispiele zum Kopieren</h3>
+    <pre>// Warmwasser-Solltemperatur auf 55 °C
+msg.feature = "heating.dhw.temperature.main";
+msg.command = "setTargetTemperature";
+msg.payload = { temperature: 55 };
+
+// Warmwasser sofort einmalig aufheizen (falls vom Gerät angeboten)
+msg.feature = "heating.dhw.oneTimeCharge";
+msg.command = "activate";
+msg.payload = {};
+
+// Betriebsart des Heizkreises 0
+msg.feature = "heating.circuits.0.operating.modes.active";
+msg.command = "setMode";
+msg.payload = { mode: "dhwAndHeating" };
+
+// Heizkurve setzen
+msg.feature = "heating.circuits.0.heating.curve";
+msg.command = "setCurve";
+msg.payload = { slope: 0.6, shift: 2 };
+
+// Raumtemperatur Normalbetrieb
+msg.feature = "heating.circuits.0.operating.programs.normal";
+msg.command = "setTemperature";
+msg.payload = { targetTemperature: 21 };
+
+// Zirkulationspumpe tagsüber an (Zeitplan)
+const day = [{ start: "06:00", end: "21:00", mode: "on", position: 0 }];
+msg.feature = "heating.dhw.pumps.circulation.schedule";
+msg.command = "setSchedule";
+msg.payload = { newSchedule: { mon: day, tue: day, wed: day, thu: day, fri: day, sat: day, sun: day } };
+
+// Zirkulationspumpe dauerhaft aus (leerer Zeitplan)
+msg.payload = { newSchedule: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] } };
+
+// Urlaubsprogramm
+msg.feature = "heating.operating.programs.holiday";
+msg.command = "schedule";
+msg.payload = { start: "2026-12-20", end: "2027-01-03" };</pre>
+
+    <h3>Zeitpläne</h3>
+    <p>Zeitpläne (<code>heating.dhw.schedule</code>, <code>heating.dhw.pumps.circulation.schedule</code>,
+    <code>heating.circuits.N.heating.schedule</code>) werden immer <b>vollständig</b> ersetzt. Grenzen:
+    meist höchstens 4 Einträge pro Tag, 10-Minuten-Raster, erlaubte Modi laut Dialog. Wer einen Plan nur
+    vorübergehend ändern will, liest vorher den aktuellen Plan (<code>values.entries</code>) mit der
+    Lese-Node, sichert ihn und spielt ihn später zurück – siehe Beispiel-Flows im Paket.</p>
+
+    <h3>Schutzmechanismen</h3>
+    <ul>
+        <li><b>Positivliste durch die API</b>: nur Befehle, die das Gerät für diesen Datenpunkt anbietet.</li>
+        <li><b>Wertebereiche</b>: Minimum, Maximum, Schrittweite, Auswahllisten und Muster kommen direkt von
+        Viessmann und werden vor dem Senden geprüft.</li>
+        <li><b>Nur bei Änderung schreiben</b>: Liegt der Zielwert bereits an, wird nichts gesendet
+        (<code>skipped: true</code>). Das gilt für Temperaturen, Betriebsarten, Heizkurven,
+        activate/deactivate und Zeitpläne.</li>
+        <li><b>Mindestabstand</b>: in der Konfiguration einstellbar, schützt vor Schleifen
+        (<code>RATE_GUARD</code>).</li>
+        <li><b>Testlauf</b>: prüft alles und meldet <code>dryRun: true</code>, ohne zu senden.</li>
+    </ul>
+
+    <h3>Ausgang 1 – Ergebnis</h3>
+    <pre>{ ok: true, skipped: false, feature: "...", command: "...",
+  params: {...}, previous: 58, response: {...} }</pre>
+
+    <h3>Ausgang 2 – Fehler</h3>
+    <p>Enthält <code>error</code> (übersetzter Text) und einen <code>code</code>: <code>WRITE_DISABLED</code>,
+    <code>MISSING_TARGET</code>, <code>RATE_GUARD</code>, <code>BAD_PARAMS</code>, <code>UNKNOWN_FEATURE</code>,
+    <code>FEATURE_DISABLED</code>, <code>UNKNOWN_COMMAND</code> (mit <code>availableCommands</code>),
+    <code>VALIDATION_FAILED</code> (mit <code>errors</code> und <code>constraints</code>) oder einen
+    API-Fehler mit <code>statusCode</code>.</p>
+
+    <h3>Hinweis</h3>
+    <p>Änderungen brauchen an der Anlage oft ein bis zwei Minuten, bis sie beim Lesen sichtbar werden.
+    Ein geänderter Warmwasser-Zeitplan startet das Aufheizen nur, wenn der Speicher unter dem Sollwert
+    liegt.</p>
+
+    <h3>Haftungsausschluss</h3>
+    <p><b>Nutzung auf eigene Gefahr, ohne Gewähr.</b> Inoffizielles Projekt, keine Verbindung zu
+    Viessmann. Schreibbefehle verändern die Einstellungen der Heizungsanlage; für Schäden oder Kosten
+    wird keine Haftung übernommen.</p>
+</script>

@@ -1,0 +1,490 @@
+[
+    {
+        "id": "vm_zp_tab",
+        "type": "tab",
+        "label": "Viessmann circulation pump",
+        "disabled": false,
+        "info": "EN: Switches the circulation pump to a daytime schedule for 20 minutes and then restores the previous schedule. After importing, select your connection in both Viessmann nodes and enable \"Allow write access\".\n\nDE: Schaltet die Zirkulationspumpe für 20 Minuten auf einen Tagesplan und stellt danach den vorherigen Plan wieder her. Nach dem Import in beiden Viessmann-Nodes die eigene Verbindung auswählen und \"Schreibzugriff erlauben\" aktivieren."
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_c0",
+        "type": "comment",
+        "name": "Circulation pump temporarily ON  /  Zirkulationspumpe vorübergehend AN",
+        "info": "EN: ON reads the current schedule, saves it to a file, sends a daytime schedule and restores the saved schedule after 20 minutes. Pressing ON again within the 20 minutes extends the time and does NOT overwrite the backup. OFF sends an empty schedule and stops the timer. Restore sends the saved schedule immediately.\nRequirement: enable \"Allow write access\" in the Viessmann configuration.\n\nDE: AN liest den aktuellen Plan, sichert ihn in eine Datei, sendet einen Tagesplan und spielt nach 20 Minuten den gesicherten Plan zurück. Erneutes AN innerhalb der 20 Minuten verlängert die Zeit und überschreibt die Sicherung NICHT. AUS sendet einen leeren Plan und stoppt den Timer. Wiederherstellen spielt den gesicherten Plan sofort zurück.\nVoraussetzung: In der Viessmann-Konfiguration \"Schreibzugriff erlauben\" aktivieren.",
+        "x": 330,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_c1",
+        "type": "comment",
+        "name": "save current schedule",
+        "info": "",
+        "x": 170,
+        "y": 90,
+        "wires": []
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_i_save",
+        "type": "inject",
+        "name": "save schedule",
+        "props": [
+            {
+                "p": "action",
+                "v": "save",
+                "vt": "str"
+            },
+            {
+                "p": "refresh",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 150,
+        "y": 130,
+        "wires": [
+            [
+                "vm_zp_read"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_c2",
+        "type": "comment",
+        "name": "Pump ON during the day (20 min)",
+        "info": "",
+        "x": 190,
+        "y": 190,
+        "wires": []
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_i_on",
+        "type": "inject",
+        "name": "pump ON",
+        "props": [
+            {
+                "p": "action",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "p": "refresh",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 140,
+        "y": 230,
+        "wires": [
+            [
+                "vm_zp_read"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_li_on",
+        "type": "link in",
+        "name": "Viessmann Set Pump to on",
+        "links": [],
+        "x": 105,
+        "y": 270,
+        "wires": [
+            [
+                "vm_zp_ch_on"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_ch_on",
+        "type": "change",
+        "name": "action = on",
+        "rules": [
+            {
+                "t": "set",
+                "p": "action",
+                "pt": "msg",
+                "to": "on",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "refresh",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "x": 240,
+        "y": 270,
+        "wires": [
+            [
+                "vm_zp_read"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_read",
+        "type": "viessmann-read",
+        "name": "read circulation schedule",
+        "server": "",
+        "selection": "selected",
+        "features": [
+            "heating.dhw.pumps.circulation.schedule"
+        ],
+        "pattern": "",
+        "outputFormat": "object",
+        "onlyAvailable": true,
+        "topicPrefix": "viessmann",
+        "interval": 0,
+        "startupDelay": 10,
+        "staleAfter": 900,
+        "forceRefresh": true,
+        "x": 440,
+        "y": 180,
+        "wires": [
+            [
+                "vm_zp_fn_eval"
+            ],
+            [
+                "vm_zp_dbg_err"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_fn_eval",
+        "type": "function",
+        "name": "save / ON schedule",
+        "func": "// Evaluates the schedule that was read.\n// Output 1: schedule to save in the file\n// Output 2: temporary ON schedule (only if msg.action === \"on\")\n//\n// Protection: while the temporary ON schedule is active, nothing is saved –\n// otherwise the ON schedule would overwrite the real schedule in the file.\n// Schutz: Läuft der temporäre AN-Plan, wird NICHT gesichert.\n\nconst f = msg.payload && msg.payload['heating.dhw.pumps.circulation.schedule'];\nconst entries = f && f.values ? f.values.entries : null;\n\nif (!entries || typeof entries !== 'object') {\n    node.status({ fill: 'red', shape: 'ring', text: 'no schedule read' });\n    node.warn('Data point heating.dhw.pumps.circulation.schedule not found or empty.');\n    return null;\n}\n\nconst tempActive = flow.get('vmCircTempActive') === true;\nlet save = null;\nif (!tempActive) {\n    save = { topic: 'dhwCircSched', payload: JSON.stringify(entries) };\n} else {\n    node.warn('Temporary ON schedule active – current schedule is not saved.');\n}\n\nlet on = null;\nif (msg.action === 'on') {\n    // Pump ON during the day – adjust if needed (max. 4 entries per day, 10 min grid)\n    const day = [{ start: '06:00', end: '21:00', mode: 'on', position: 0 }];\n    on = { topic: 'dhwCircSchedOn', payload: { newSchedule: {\n        mon: day, tue: day, wed: day, thu: day, fri: day, sat: day, sun: day\n    } } };\n    flow.set('vmCircTempActive', true);\n}\n\nnode.status({ fill: 'green', shape: 'dot',\n    text: new Date().toLocaleTimeString() + ': ' + (save ? 'saved' : 'not saved') + (on ? ', ON schedule sent' : '') });\nreturn [save, on];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "outputLabels": [
+            "save schedule",
+            "ON schedule"
+        ],
+        "x": 670,
+        "y": 180,
+        "wires": [
+            [
+                "vm_zp_file_out"
+            ],
+            [
+                "vm_zp_write",
+                "vm_zp_trigger"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_file_out",
+        "type": "file",
+        "name": "store schedule",
+        "filename": "/data/viessmann-pump-schedule.dat",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 900,
+        "y": 130,
+        "wires": [
+            [
+                "vm_zp_dbg_save"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_dbg_save",
+        "type": "debug",
+        "name": "schedule saved",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1100,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_trigger",
+        "type": "trigger",
+        "name": "restore after 20 min",
+        "op1": "",
+        "op2": "",
+        "op1type": "nul",
+        "op2type": "pay",
+        "duration": "20",
+        "extend": true,
+        "overrideDelay": false,
+        "units": "min",
+        "reset": "",
+        "bytopic": "all",
+        "topic": "topic",
+        "outputs": 1,
+        "x": 680,
+        "y": 310,
+        "wires": [
+            [
+                "vm_zp_file_in"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_c3",
+        "type": "comment",
+        "name": "restore saved schedule",
+        "info": "",
+        "x": 190,
+        "y": 350,
+        "wires": []
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_i_restore",
+        "type": "inject",
+        "name": "restore",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 390,
+        "wires": [
+            [
+                "vm_zp_file_in"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_li_restore",
+        "type": "link in",
+        "name": "Viessmann Reset Pump Schedule",
+        "links": [],
+        "x": 105,
+        "y": 430,
+        "wires": [
+            [
+                "vm_zp_file_in"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_file_in",
+        "type": "file in",
+        "name": "read schedule",
+        "filename": "/data/viessmann-pump-schedule.dat",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 420,
+        "y": 390,
+        "wires": [
+            [
+                "vm_zp_fn_restore"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_fn_restore",
+        "type": "function",
+        "name": "restore schedule",
+        "func": "// Reads the saved schedule from the file and sends it to the heating.\n// Output 1: setSchedule command\n// Output 2: reset for the return timer\n\nlet entries;\ntry {\n    entries = JSON.parse(String(msg.payload || '').trim());\n    if (typeof entries === 'string') entries = JSON.parse(entries);\n} catch (e) {\n    node.status({ fill: 'red', shape: 'ring', text: 'file empty or invalid' });\n    node.error('Saved schedule not readable: ' + e.message, msg);\n    return null;\n}\nif (entries && entries.newSchedule) entries = entries.newSchedule;\n\nflow.set('vmCircTempActive', false);\nnode.status({ fill: 'green', shape: 'dot', text: new Date().toLocaleTimeString() + ': schedule restored' });\nreturn [{ topic: 'dhwCircSchedRestore', payload: { newSchedule: entries } }, { reset: true }];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "outputLabels": [
+            "setSchedule",
+            "timer reset"
+        ],
+        "x": 670,
+        "y": 390,
+        "wires": [
+            [
+                "vm_zp_write"
+            ],
+            [
+                "vm_zp_trigger"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_c4",
+        "type": "comment",
+        "name": "Pump always OFF",
+        "info": "",
+        "x": 160,
+        "y": 490,
+        "wires": []
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_i_off",
+        "type": "inject",
+        "name": "pump OFF",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 530,
+        "wires": [
+            [
+                "vm_zp_fn_off"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_li_off",
+        "type": "link in",
+        "name": "Viessmann Set Pump to off",
+        "links": [],
+        "x": 105,
+        "y": 570,
+        "wires": [
+            [
+                "vm_zp_fn_off"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_fn_off",
+        "type": "function",
+        "name": "schedule OFF",
+        "func": "// Schedule: pump permanently OFF (empty schedule). Output 2 stops a running return timer.\nflow.set('vmCircTempActive', false);\nnode.status({ fill: 'grey', shape: 'dot', text: new Date().toLocaleTimeString() + ': OFF' });\nreturn [\n    { topic: 'dhwCircSchedOff', payload: { newSchedule: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] } } },\n    { reset: true }\n];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "outputLabels": [
+            "setSchedule",
+            "timer reset"
+        ],
+        "x": 420,
+        "y": 530,
+        "wires": [
+            [
+                "vm_zp_write"
+            ],
+            [
+                "vm_zp_trigger"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_write",
+        "type": "viessmann-write",
+        "name": "setSchedule circulation",
+        "server": "",
+        "feature": "heating.dhw.pumps.circulation.schedule",
+        "command": "setSchedule",
+        "paramSource": "payload",
+        "fixedParams": "",
+        "skipIfUnchanged": true,
+        "dryRun": false,
+        "topicPrefix": "viessmann",
+        "x": 940,
+        "y": 390,
+        "wires": [
+            [
+                "vm_zp_dbg_set"
+            ],
+            [
+                "vm_zp_dbg_err"
+            ]
+        ]
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_dbg_set",
+        "type": "debug",
+        "name": "setSchedule result",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1170,
+        "y": 370,
+        "wires": []
+    },
+    {
+        "z": "vm_zp_tab",
+        "id": "vm_zp_dbg_err",
+        "type": "debug",
+        "name": "Viessmann errors",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.error",
+        "statusType": "msg",
+        "x": 1160,
+        "y": 430,
+        "wires": []
+    }
+]

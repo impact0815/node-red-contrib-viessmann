@@ -1,0 +1,105 @@
+<script type="text/html" data-help-name="viessmann-write">
+    <p>Executes write commands of the Viessmann IoT API – for example setting the hot water target
+    temperature, changing the operating mode, changing schedules for hot water and circulation pump or
+    starting a one-time hot water charge.</p>
+
+    <h3>Before anything is written</h3>
+    <p><b>"Allow write access"</b> must be enabled in the connection configuration. Without it the node
+    rejects every command (<code>WRITE_DISABLED</code>) – an imported example flow must not change the
+    heating unasked. Try new commands with <b>dry run</b> enabled first.</p>
+
+    <h3>Which commands exist?</h3>
+    <p><b>Load writable data points</b> shows exactly the data points and commands <i>your</i> system
+    offers, including the allowed parameters and limits. Different devices offer different commands –
+    the list in the dialog is authoritative, not the examples below.</p>
+
+    <h3>Input</h3>
+    <dl class="message-properties">
+        <dt class="optional">feature <span class="property-type">string</span></dt>
+        <dd>Overrides the data point selected in the node.</dd>
+        <dt class="optional">command <span class="property-type">string</span></dt>
+        <dd>Overrides the command.</dd>
+        <dt class="optional">params <span class="property-type">object</span></dt>
+        <dd>Parameters of the command. Otherwise <code>msg.payload</code> is used if it is an object.</dd>
+    </dl>
+
+    <h3>Examples to copy</h3>
+    <pre>// Hot water target temperature 55 °C
+msg.feature = "heating.dhw.temperature.main";
+msg.command = "setTargetTemperature";
+msg.payload = { temperature: 55 };
+
+// Heat up hot water once, right now (if offered by the device)
+msg.feature = "heating.dhw.oneTimeCharge";
+msg.command = "activate";
+msg.payload = {};
+
+// Operating mode of heating circuit 0
+msg.feature = "heating.circuits.0.operating.modes.active";
+msg.command = "setMode";
+msg.payload = { mode: "dhwAndHeating" };
+
+// Heating curve
+msg.feature = "heating.circuits.0.heating.curve";
+msg.command = "setCurve";
+msg.payload = { slope: 0.6, shift: 2 };
+
+// Room temperature normal mode
+msg.feature = "heating.circuits.0.operating.programs.normal";
+msg.command = "setTemperature";
+msg.payload = { targetTemperature: 21 };
+
+// Circulation pump on during the day (schedule)
+const day = [{ start: "06:00", end: "21:00", mode: "on", position: 0 }];
+msg.feature = "heating.dhw.pumps.circulation.schedule";
+msg.command = "setSchedule";
+msg.payload = { newSchedule: { mon: day, tue: day, wed: day, thu: day, fri: day, sat: day, sun: day } };
+
+// Circulation pump permanently off (empty schedule)
+msg.payload = { newSchedule: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] } };
+
+// Holiday program
+msg.feature = "heating.operating.programs.holiday";
+msg.command = "schedule";
+msg.payload = { start: "2026-12-20", end: "2027-01-03" };</pre>
+
+    <h3>Schedules</h3>
+    <p>Schedules (<code>heating.dhw.schedule</code>, <code>heating.dhw.pumps.circulation.schedule</code>,
+    <code>heating.circuits.N.heating.schedule</code>) are always replaced <b>completely</b>. Limits:
+    usually at most 4 entries per day, 10-minute grid, allowed modes as shown in the dialog. To change a
+    schedule only temporarily, read the current one (<code>values.entries</code>) with the read node,
+    save it and restore it later – see the example flows of the package.</p>
+
+    <h3>Safety mechanisms</h3>
+    <ul>
+        <li><b>Allow list by the API</b>: only commands the device offers for this data point.</li>
+        <li><b>Value ranges</b>: minimum, maximum, step size, allowed values and patterns come straight
+        from Viessmann and are checked before sending.</li>
+        <li><b>Only write on change</b>: if the target value is already set, nothing is sent
+        (<code>skipped: true</code>). This applies to temperatures, operating modes, heating curves,
+        activate/deactivate and schedules.</li>
+        <li><b>Minimum interval</b>: configurable in the connection, protects against loops
+        (<code>RATE_GUARD</code>).</li>
+        <li><b>Dry run</b>: checks everything and reports <code>dryRun: true</code> without sending.</li>
+    </ul>
+
+    <h3>Output 1 – result</h3>
+    <pre>{ ok: true, skipped: false, feature: "...", command: "...",
+  params: {...}, previous: 58, response: {...} }</pre>
+
+    <h3>Output 2 – errors</h3>
+    <p>Contains <code>error</code> (translated text) and a <code>code</code>: <code>WRITE_DISABLED</code>,
+    <code>MISSING_TARGET</code>, <code>RATE_GUARD</code>, <code>BAD_PARAMS</code>, <code>UNKNOWN_FEATURE</code>,
+    <code>FEATURE_DISABLED</code>, <code>UNKNOWN_COMMAND</code> (with <code>availableCommands</code>),
+    <code>VALIDATION_FAILED</code> (with <code>errors</code> and <code>constraints</code>) or an API error
+    with <code>statusCode</code>.</p>
+
+    <h3>Note</h3>
+    <p>Changes often take one to two minutes before they become visible when reading. A changed hot
+    water schedule only starts heating if the cylinder is below the target temperature.</p>
+
+    <h3>Disclaimer</h3>
+    <p><b>Use at your own risk – no warranty.</b> Unofficial project, not affiliated with Viessmann.
+    Write commands change the settings of your heating system; no liability is accepted for any
+    damage or costs.</p>
+</script>

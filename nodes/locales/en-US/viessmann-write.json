@@ -1,0 +1,93 @@
+{
+    "viessmann-write": {
+        "paletteLabel": "Viessmann write",
+        "outputs": {
+            "result": "Result",
+            "error": "Errors"
+        },
+        "label": {
+            "name": "Name",
+            "server": "Connection",
+            "feature": "Data point",
+            "command": "Command",
+            "allowed": "Allowed parameters",
+            "paramSource": "Parameters",
+            "json": "JSON",
+            "skipIfUnchanged": "Do not write if the value is already set",
+            "dryRun": "Dry run",
+            "dryRunHint": "– check everything, but send nothing",
+            "topicPrefix": "Topic prefix"
+        },
+        "paramSource": {
+            "payload": "from msg.payload or msg.params",
+            "fixed": "fixed in the node"
+        },
+        "button": {
+            "load": "Load writable data points"
+        },
+        "placeholder": {
+            "name": "Name",
+            "json": "{\"temperature\": 55}"
+        },
+        "editor": {
+            "needServer": "Please select a connection first and press Deploy.",
+            "loading": "Loading writable data points …",
+            "loaded": "__count__ writable data points found.",
+            "notAvailable": "currently not available",
+            "notExecutable": "currently not executable",
+            "loadFirst": "(load data points first)",
+            "noParams": "This command takes no parameters. <code>msg.payload = {}</code> is enough.",
+            "thParam": "Parameter",
+            "thType": "Type",
+            "thLimits": "Limits",
+            "example": "Example",
+            "min": "min __v__",
+            "max": "max __v__",
+            "step": "step __v__",
+            "modes": "modes __v__",
+            "maxEntries": "max. __v__ entries/day",
+            "resolution": "__v__ min grid",
+            "minLength": "min. length __v__",
+            "maxLength": "max. length __v__",
+            "regEx": "pattern __v__",
+            "notSaved": "Connection not saved yet.",
+            "error": "Error"
+        },
+        "status": {
+            "noServer": "no connection selected",
+            "ready": "ready",
+            "locked": "writing locked",
+            "unchanged": "__time__: unchanged",
+            "dryRun": "__time__: dry run",
+            "ok": "__time__: __command__ ok"
+        },
+        "result": {
+            "skipped": "Target value already set – nothing was written."
+        },
+        "error": {
+            "WRITE_DISABLED": "Writing is disabled. Enable \"Allow write access\" in the Viessmann configuration.",
+            "MISSING_TARGET": "Data point and command are missing. Set them in the node or via msg.feature / msg.command.",
+            "RATE_GUARD": "Minimum interval between writes not reached (__s__ s left).",
+            "BAD_PARAMS": "Fixed parameters are not valid JSON: __detail__",
+            "UNKNOWN_FEATURE": "Data point \"__feature__\" does not exist on this device.",
+            "FEATURE_DISABLED": "Data point \"__feature__\" is not supported by this device (isEnabled=false).",
+            "UNKNOWN_COMMAND": "Command \"__command__\" does not exist for \"__feature__\". Available: __available__."
+        },
+        "validation": {
+            "UNKNOWN_COMMAND": "Unknown command.",
+            "NOT_EXECUTABLE": "Command \"__command__\" is currently not executable (isExecutable=false).",
+            "REQUIRED": "Required parameter \"__name__\" is missing.",
+            "NOT_A_NUMBER": "Parameter \"__name__\" must be a number (received: __value__).",
+            "BELOW_MIN": "\"__name__\" = __value__ is below the minimum __min__.",
+            "ABOVE_MAX": "\"__name__\" = __value__ is above the maximum __max__.",
+            "STEPPING": "\"__name__\" = __value__ does not match the step size __step__.",
+            "NOT_A_STRING": "Parameter \"__name__\" must be a string.",
+            "NOT_ALLOWED": "\"__name__\" = \"__value__\" is not allowed. Allowed: __allowed__.",
+            "TOO_SHORT": "\"__name__\" is too short (min. __min__).",
+            "TOO_LONG": "\"__name__\" is too long (max. __max__).",
+            "PATTERN": "\"__name__\" does not match the pattern __pattern__.",
+            "NOT_BOOLEAN": "Parameter \"__name__\" must be true or false.",
+            "UNKNOWN_PARAM": "Unknown parameter \"__name__\". Allowed: __allowed__."
+        }
+    }
+}

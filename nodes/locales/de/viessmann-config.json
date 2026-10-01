@@ -1,0 +1,87 @@
+{
+    "viessmann-config": {
+        "label": {
+            "name": "Name",
+            "clientId": "Client-ID",
+            "redirectUri": "Redirect-URI",
+            "codeChallenge": "Code Challenge",
+            "username": "Benutzername",
+            "password": "Passwort",
+            "installation": "Installation",
+            "gateway": "Gateway",
+            "device": "Gerät",
+            "cache": "Cache",
+            "timeout": "Timeout",
+            "allowWrite": "Schreibzugriff erlauben",
+            "minWriteInterval": "Schreibsperre",
+            "iamHost": "IAM-Host",
+            "apiHost": "API-Host",
+            "seconds": "Sekunden",
+            "ms": "ms",
+            "secondsGap": "Sekunden Mindestabstand"
+        },
+        "section": {
+            "portal": "Viessmann Developer Portal",
+            "account": "ViCare-Konto",
+            "system": "Anlage",
+            "systemHint": "(leer lassen = automatisch ermitteln)",
+            "behaviour": "Verhalten",
+            "advanced": "Erweiterte Einstellungen (Endpunkte)"
+        },
+        "hint": {
+            "portal": "Aus dem <a href=\"https://app.developer.viessmann-climatesolutions.com\" target=\"_blank\" rel=\"noopener\">Developer Portal</a> (<i>Your Clients</i>). Dort muss <b>Google reCAPTCHA ausgeschaltet</b> sein.",
+            "redirectUri": "Aus dem Portal <b>kopieren und einfügen</b>, nicht abtippen – sie muss zeichengenau übereinstimmen. Unter dieser Adresse muss nichts lauschen; die Node liest den Code direkt aus der Antwort von Viessmann.",
+            "codeChallenge": "43 bis 128 Zeichen aus Buchstaben, Ziffern und <code>- . _ ~</code>. Bleibt das Feld leer, erzeugt die Node bei jeder Anmeldung selbst eine.",
+            "account": "Dieselben Zugangsdaten wie in der ViCare-App."
+        },
+        "placeholder": {
+            "name": "z. B. Vitodens Keller",
+            "clientId": "z. B. 4e1a9c…",
+            "redirectUri": "http://localhost:1880/authcode",
+            "codeChallenge": "leer = automatisch",
+            "username": "E-Mail-Adresse",
+            "auto": "automatisch"
+        },
+        "button": {
+            "generate": "erzeugen",
+            "test": "Verbindung testen"
+        },
+        "editor": {
+            "challengeGenerated": "Neue Code Challenge erzeugt (64 Zeichen).",
+            "testing": "Melde mich bei Viessmann an …",
+            "connected": "Verbindung steht.",
+            "installation": "Installation",
+            "gateway": "Gateway",
+            "device": "Gerät",
+            "datapoints": "Datenpunkte: __available__ von __total__ verfügbar, __writable__ beschreibbar.",
+            "done": "Erledigt",
+            "error": "Fehler"
+        },
+        "runtime": {
+            "notDeployed": "Konfiguration noch nicht gespeichert. Bitte einmal Deploy drücken.",
+            "test": {
+                "login": "Anmeldung erfolgreich",
+                "system": "Anlage gefunden",
+                "datapoints": "Datenpunkte gelesen"
+            },
+            "errors": {
+                "NO_CLIENT_ID": "Keine Client-ID konfiguriert.",
+                "NO_CREDENTIALS": "Anmeldedaten unvollständig. Bitte Client-ID, ViCare-Benutzername und Passwort eintragen.",
+                "TOKEN_REFRESH_FAILED": "Token-Erneuerung fehlgeschlagen (HTTP __status__).",
+                "BAD_CODE_CHALLENGE": "Die Code Challenge ist ungültig: erlaubt sind 43 bis 128 Zeichen aus Buchstaben, Ziffern und \"-._~\". Feld leer lassen, dann wird sie automatisch erzeugt.",
+                "LOGIN_REJECTED": "Anmeldung abgelehnt (HTTP 401): ViCare-Benutzername oder Passwort falsch.",
+                "REDIRECT_URI_MISMATCH": "Viessmann lehnt die Redirect-URI ab (__detail__). Gesendet wurde \"__redirectUri__\". Sie muss zeichengenau einer der im Viessmann Developer Portal beim Client hinterlegten Adressen entsprechen (http/https, Hostname, Port, Pfad und abschließender Schrägstrich).",
+                "INTERACTIVE_LOGIN_REQUIRED": "Viessmann verlangt eine interaktive Anmeldung. Häufigste Ursachen: Google reCAPTCHA ist im Viessmann Developer Portal für diesen Client noch eingeschaltet, Benutzername oder Passwort stimmen nicht, oder die Redirect-URI \"__redirectUri__\" weicht von der dort hinterlegten ab.",
+                "LOGIN_FAILED": "Anmeldung fehlgeschlagen: __detail__",
+                "UNEXPECTED_REDIRECT": "Unerwartete Weiterleitung: __location__",
+                "CODE_EXCHANGE_FAILED": "Einlösen des Autorisierungscodes fehlgeschlagen (HTTP __status__): __detail__",
+                "TIMEOUT": "Zeitüberschreitung nach __ms__ ms: __url__",
+                "NETWORK": "Netzwerkfehler: __detail__",
+                "RATE_LIMIT": "Rate Limit der Viessmann-API erreicht (HTTP 429). Abfrageintervall erhöhen.",
+                "HTTP_ERROR": "API-Fehler (HTTP __status__): __detail__",
+                "NO_INSTALLATION": "Keine Installation gefunden. Ist die Anlage in der ViCare-App registriert?",
+                "NO_GATEWAY": "Kein Gateway gefunden (Vitoconnect online?)."
+            }
+        }
+    }
+}
