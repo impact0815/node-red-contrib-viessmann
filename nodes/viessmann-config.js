@@ -1,26 +1,43 @@
 /**
- * Konfigurations-Node: hält Zugangsdaten, meldet sich vollautomatisch bei
- * Viessmann an und stellt allen Lese- und Schreib-Nodes einen gemeinsamen
- * Datencache zur Verfügung (eine Abfrage pro Takt statt einer pro Node –
- * wichtig wegen des Rate Limits).
+ * Configuration node: holds the credentials, logs in to Viessmann fully
+ * automatically and provides a shared data cache for all read and write
+ * nodes (one request per cycle instead of one per node – important because
+ * of the rate limit).
  *
- * Der Nutzer trägt nur ein: Client-ID, ViCare-Benutzername, ViCare-Passwort
- * und optional die Code Challenge. Alles Weitere – Authorization Code,
- * Access Token, Refresh Token, Erneuerung, erneute Anmeldung nach Ablauf –
- * erledigt die Node selbst.
+ * The user only enters: client ID, redirect URI, ViCare username, ViCare
+ * password and optionally the code challenge. Everything else – authorization
+ * code, access token, refresh token, renewal, new login after expiry – is
+ * handled by the node.
  *
- * Idee und Ablauf des API-Zugangs nach https://www.rustimation.eu/index.php/1_zugang_api/
+ * All texts come from the message catalogs in nodes/locales/<lang>/.
+ *
+ * API access flow based on https://www.rustimation.eu/index.php/1_zugang_api/
  */
 
 'use strict';
 
 const { ViessmannApi, DEFAULT_REDIRECT_URI } = require('../lib/api');
+const { ERRORS } = require('../lib/errors');
 const featuresLib = require('../lib/features');
 
-/** Platzhalter, den der Node-RED-Editor für bereits gespeicherte Passwörter sendet. */
+/** Placeholder the Node-RED editor sends for already stored passwords. */
 const PWRD = '__PWRD__';
 
 module.exports = function (RED) {
+    /** Translates a key of this catalog; falls back to the given text. */
+    function t(key, params, fallback) {
+        const full = 'viessmann-config.' + key;
+        const text = RED._(full, params || {});
+        return (text && text !== full) ? text : (fallback !== undefined ? fallback : full);
+    }
+
+    /** Translates a ViessmannError into the Node-RED language. */
+    function translateError(err) {
+        if (!err) return '';
+        if (err.key && ERRORS[err.key]) return t('runtime.errors.' + err.key, err.params, err.message);
+        return err.message || String(err);
+    }
+
     function ViessmannConfigNode(config) {
         RED.nodes.createNode(this, config);
         const node = this;
@@ -37,6 +54,8 @@ module.exports = function (RED) {
         node.cacheTtl = Math.max(0, Number(config.cacheTtl) || 30) * 1000;
         node.allowWrite = config.allowWrite === true;
         node.minWriteInterval = Math.max(0, Number(config.minWriteInterval) || 5) * 1000;
+
+        node.translateError = translateError;
 
         const creds = node.credentials || {};
 
@@ -56,13 +75,13 @@ module.exports = function (RED) {
                 else node.debug(msg);
             },
             onTokens: ({ refreshToken }) => {
-                // Neues Refresh Token mitschreiben. Geht das schief, ist das kein
-                // Beinbruch: Mit Benutzer und Passwort meldet sich die Node nach
-                // einem Neustart einfach wieder selbst an.
+                // Persist a new refresh token. If that fails it is no disaster:
+                // with username and password the node simply logs in again
+                // after a restart.
                 try {
                     RED.nodes.addCredentials(node.id, Object.assign({}, node.credentials, { refreshToken }));
                 } catch (err) {
-                    node.debug('Refresh Token nicht persistiert: ' + err.message);
+                    node.debug('Refresh token not persisted: ' + err.message);
                 }
             }
         });
@@ -71,7 +90,7 @@ module.exports = function (RED) {
         node._inFlight = null;
         node._lastWriteAt = 0;
 
-        /** Gemeinsame Zieldaten (Installation/Gateway/Gerät). */
+        /** Shared targets (installation/gateway/device). */
         node.resolveTargets = function (force) {
             return node.api.resolveTargets({
                 installationId: node.installationId || undefined,
@@ -82,9 +101,8 @@ module.exports = function (RED) {
         };
 
         /**
-         * Liefert alle Datenpunkte normalisiert. Innerhalb der Cache-Zeit wird die
-         * vorhandene Antwort wiederverwendet; parallele Anfragen teilen sich
-         * denselben laufenden Aufruf.
+         * Returns all data points normalized. Within the cache time the existing
+         * response is reused; parallel requests share the same running call.
          */
         node.getFeatures = async function ({ force = false } = {}) {
             const fresh = node._cache.list && (Date.now() - node._cache.at) < node.cacheTtl;
@@ -110,7 +128,7 @@ module.exports = function (RED) {
             node._cache = { at: 0, list: null, raw: null };
         };
 
-        /** Schutz vor Schreibschleifen. */
+        /** Protection against write loops. */
         node.checkWriteRate = function () {
             const delta = Date.now() - node._lastWriteAt;
             if (node._lastWriteAt && delta < node.minWriteInterval) {
@@ -140,22 +158,22 @@ module.exports = function (RED) {
     });
 
     /* ================================================================== *
-     * Editor-Endpunkte
+     * Editor endpoints
      * ================================================================== */
 
     function getConfigNode(req, res) {
         const node = RED.nodes.getNode(req.params.id);
         if (!node || node.type !== 'viessmann-config') {
-            res.status(404).json({ error: 'Konfiguration noch nicht gespeichert. Bitte einmal Deploy drücken.' });
+            res.status(404).json({ error: t('runtime.notDeployed') });
             return null;
         }
         return node;
     }
 
     /**
-     * Verbindungstest direkt aus dem Dialog – funktioniert auch VOR dem ersten
-     * Deploy. Bereits gespeicherte Passwörter schickt der Editor nur als
-     * Platzhalter; die werden durch die hinterlegten Werte ersetzt.
+     * Connection test from the dialog – works even BEFORE the first deploy.
+     * Stored passwords are only sent as placeholders by the editor; they are
+     * replaced with the stored values.
      */
     RED.httpAdmin.post('/viessmann/test', RED.auth.needsPermission('flows.write'), async function (req, res) {
         const b = req.body || {};
@@ -181,23 +199,23 @@ module.exports = function (RED) {
         const steps = [];
         try {
             await api.login();
-            steps.push('Anmeldung erfolgreich');
+            steps.push(t('runtime.test.login'));
             const targets = await api.resolveTargets({
                 installationId: (b.installationId || '').trim() || undefined,
                 gatewaySerial: (b.gatewaySerial || '').trim() || undefined,
                 deviceId: (b.deviceId !== undefined && String(b.deviceId).trim() !== '')
                     ? String(b.deviceId).trim() : undefined
             });
-            steps.push('Anlage gefunden');
+            steps.push(t('runtime.test.system'));
             const list = featuresLib.normalizeFeatures(await api.getFeatures(targets));
-            steps.push('Datenpunkte gelesen');
+            steps.push(t('runtime.test.datapoints'));
             res.json({ ok: true, steps, targets, summary: featuresLib.summarize(list) });
         } catch (err) {
-            res.json({ ok: false, steps, error: err.message, code: err.code || null });
+            res.json({ ok: false, steps, error: translateError(err), code: err.code || null });
         }
     });
 
-    // Liste aller Datenpunkte des Geräts – füllt die Auswahlfelder im Editor.
+    // List of all data points of the device – fills the selection lists in the editor.
     RED.httpAdmin.get('/viessmann/:id/features', RED.auth.needsPermission('flows.read'), async function (req, res) {
         const node = getConfigNode(req, res);
         if (!node) return;
@@ -220,7 +238,7 @@ module.exports = function (RED) {
                 }))
             });
         } catch (err) {
-            res.status(500).json({ error: err.message, code: err.code || null });
+            res.status(500).json({ error: translateError(err), code: err.code || null });
         }
     });
 };

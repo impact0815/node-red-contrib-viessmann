@@ -19,18 +19,24 @@
         },
         inputs: 1,
         outputs: 2,
-        outputLabels: ['Daten', 'Status / Fehler'],
+        paletteLabel: function () {
+            return this._('viessmann-read.paletteLabel');
+        },
+        outputLabels: function (i) {
+            return this._(i === 0 ? 'viessmann-read.outputs.data' : 'viessmann-read.outputs.status');
+        },
         label: function () {
-            return this.name || 'Viessmann lesen';
+            return this.name || this._('viessmann-read.paletteLabel');
         },
         oneditprepare: function () {
             var node = this;
+            var _ = this._;
 
             $('#node-input-features-list').editableList({
                 addItem: function (row, index, data) {
                     $('<input/>', {
                         class: 'vm-feature-entry', type: 'text', style: 'width:100%',
-                        placeholder: 'z. B. heating.dhw.temperature.main'
+                        placeholder: _('viessmann-read.placeholder.feature')
                     }).val(typeof data === 'string' ? data : '').appendTo(row);
                 },
                 removable: true,
@@ -48,30 +54,29 @@
             $('#node-input-selection').on('change', toggleSelection);
             toggleSelection();
 
-            // Auswahl direkt vom Gerät – der Nutzer sieht nur, was seine Anlage liefert.
+            // Selection straight from the device – the user only sees what his system delivers.
             $('#vm-load-features').on('click', function () {
                 var serverId = $('#node-input-server').val();
                 var $info = $('#vm-features-info');
                 if (!serverId || serverId === '_ADD_') {
-                    $info.css('color', '#c62828').text('Bitte zuerst eine Verbindung auswählen und Deploy drücken.');
+                    $info.css('color', '#c62828').text(_('viessmann-read.editor.needServer'));
                     return;
                 }
-                $info.css('color', '#888').text('Lade Datenpunkte vom Gerät …');
+                $info.css('color', '#888').text(_('viessmann-read.editor.loading'));
                 $.getJSON('viessmann/' + serverId + '/features?refresh=true')
                     .done(function (d) {
                         var $sel = $('#vm-feature-picker').empty();
                         d.features.forEach(function (f) {
                             if (!f.available) return;
-                            var label = f.feature + (f.writable ? '  ✎' : '') + (f.deprecated ? '  ⚠ veraltet' : '');
+                            var label = f.feature + (f.writable ? '  ✎' : '') +
+                                (f.deprecated ? '  ⚠ ' + _('viessmann-read.editor.deprecated') : '');
                             $('<option/>').val(f.feature).text(label).appendTo($sel);
                         });
-                        $info.css('color', '#2e7d32').text(
-                            d.summary.available + ' von ' + d.summary.total + ' Datenpunkten verfügbar, ' +
-                            d.summary.writable + ' beschreibbar, ' + d.summary.deprecated + ' veraltet.');
+                        $info.css('color', '#2e7d32').text(_('viessmann-read.editor.loaded', d.summary));
                     })
                     .fail(function (x) {
-                        $info.css('color', '#c62828').text('Fehler: ' +
-                            ((x.responseJSON && x.responseJSON.error) || 'Verbindung noch nicht gespeichert.'));
+                        $info.css('color', '#c62828').text(_('viessmann-read.editor.error') + ': ' +
+                            ((x.responseJSON && x.responseJSON.error) || _('viessmann-read.editor.notSaved')));
                     });
             });
 
@@ -94,30 +99,30 @@
 
 <script type="text/html" data-template-name="viessmann-read">
     <div class="form-row">
-        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
+        <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="viessmann-read.label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]viessmann-read.placeholder.name">
     </div>
     <div class="form-row">
-        <label for="node-input-server"><i class="fa fa-cog"></i> Verbindung</label>
+        <label for="node-input-server"><i class="fa fa-cog"></i> <span data-i18n="viessmann-read.label.server"></span></label>
         <input type="text" id="node-input-server">
     </div>
     <hr>
     <div class="form-row">
-        <label for="node-input-selection"><i class="fa fa-filter"></i> Auswahl</label>
+        <label for="node-input-selection"><i class="fa fa-filter"></i> <span data-i18n="viessmann-read.label.selection"></span></label>
         <select id="node-input-selection">
-            <option value="all">Alle Datenpunkte</option>
-            <option value="selected">Nur ausgewählte Datenpunkte</option>
-            <option value="pattern">Nach Muster (z. B. heating.dhw.*)</option>
+            <option value="all" data-i18n="viessmann-read.selection.all"></option>
+            <option value="selected" data-i18n="viessmann-read.selection.selected"></option>
+            <option value="pattern" data-i18n="viessmann-read.selection.pattern"></option>
         </select>
     </div>
     <div class="form-row vm-row-pattern">
-        <label for="node-input-pattern"><i class="fa fa-asterisk"></i> Muster</label>
-        <input type="text" id="node-input-pattern" placeholder="heating.dhw.*, heating.circuits.0.*">
+        <label for="node-input-pattern"><i class="fa fa-asterisk"></i> <span data-i18n="viessmann-read.label.pattern"></span></label>
+        <input type="text" id="node-input-pattern" data-i18n="[placeholder]viessmann-read.placeholder.pattern">
     </div>
     <div class="vm-row-selected">
         <div class="form-row">
             <button type="button" class="red-ui-button" id="vm-load-features">
-                <i class="fa fa-refresh"></i> Datenpunkte vom Gerät laden
+                <i class="fa fa-refresh"></i> <span data-i18n="viessmann-read.button.load"></span>
             </button>
             <span id="vm-features-info" style="margin-left:8px;font-size:0.85em"></span>
         </div>
@@ -126,102 +131,51 @@
         </div>
         <div class="form-row">
             <button type="button" class="red-ui-button" id="vm-add-selected">
-                <i class="fa fa-plus"></i> Markierte übernehmen
+                <i class="fa fa-plus"></i> <span data-i18n="viessmann-read.button.add"></span>
             </button>
         </div>
         <div class="form-row">
-            <label style="width:100%"><i class="fa fa-list"></i> Gewählte Datenpunkte</label>
+            <label style="width:100%"><i class="fa fa-list"></i> <span data-i18n="viessmann-read.label.chosen"></span></label>
             <ol id="node-input-features-list"></ol>
         </div>
     </div>
     <hr>
     <div class="form-row">
-        <label for="node-input-outputFormat"><i class="fa fa-sign-out"></i> Ausgabe</label>
+        <label for="node-input-outputFormat"><i class="fa fa-sign-out"></i> <span data-i18n="viessmann-read.label.output"></span></label>
         <select id="node-input-outputFormat">
-            <option value="object">Objekt je Datenpunkt (Standard)</option>
-            <option value="flat">Flach: Name → Wert</option>
-            <option value="split">Eine Nachricht je Datenpunkt (für MQTT)</option>
-            <option value="raw">Rohdaten der API (Diagnose)</option>
+            <option value="object" data-i18n="viessmann-read.output.object"></option>
+            <option value="flat" data-i18n="viessmann-read.output.flat"></option>
+            <option value="split" data-i18n="viessmann-read.output.split"></option>
+            <option value="raw" data-i18n="viessmann-read.output.raw"></option>
         </select>
     </div>
     <div class="form-row">
-        <label for="node-input-topicPrefix"><i class="fa fa-tags"></i> Topic-Präfix</label>
+        <label for="node-input-topicPrefix"><i class="fa fa-tags"></i> <span data-i18n="viessmann-read.label.topicPrefix"></span></label>
         <input type="text" id="node-input-topicPrefix" placeholder="viessmann">
     </div>
     <div class="form-row">
         <label for="node-input-onlyAvailable" style="width:auto">
             <input type="checkbox" id="node-input-onlyAvailable" style="width:auto;vertical-align:top">
-            Nur tatsächlich vorhandene Datenpunkte ausgeben
+            <span data-i18n="viessmann-read.label.onlyAvailable"></span>
         </label>
     </div>
     <hr>
     <div class="form-row">
-        <label for="node-input-interval"><i class="fa fa-repeat"></i> Intervall</label>
-        <input type="number" id="node-input-interval" min="0" style="width:90px"> Sekunden (0 = nur auf Eingang)
+        <label for="node-input-interval"><i class="fa fa-repeat"></i> <span data-i18n="viessmann-read.label.interval"></span></label>
+        <input type="number" id="node-input-interval" min="0" style="width:90px"> <span data-i18n="viessmann-read.label.secondsZero"></span>
     </div>
     <div class="form-row">
-        <label for="node-input-startupDelay"><i class="fa fa-play"></i> Startverzögerung</label>
-        <input type="number" id="node-input-startupDelay" min="0" style="width:90px"> Sekunden
+        <label for="node-input-startupDelay"><i class="fa fa-play"></i> <span data-i18n="viessmann-read.label.startupDelay"></span></label>
+        <input type="number" id="node-input-startupDelay" min="0" style="width:90px"> <span data-i18n="viessmann-read.label.seconds"></span>
     </div>
     <div class="form-row">
-        <label for="node-input-staleAfter"><i class="fa fa-exclamation-triangle"></i> Veraltet nach</label>
-        <input type="number" id="node-input-staleAfter" min="0" style="width:90px"> Sekunden
+        <label for="node-input-staleAfter"><i class="fa fa-exclamation-triangle"></i> <span data-i18n="viessmann-read.label.staleAfter"></span></label>
+        <input type="number" id="node-input-staleAfter" min="0" style="width:90px"> <span data-i18n="viessmann-read.label.seconds"></span>
     </div>
     <div class="form-row">
         <label for="node-input-forceRefresh" style="width:auto">
             <input type="checkbox" id="node-input-forceRefresh" style="width:auto;vertical-align:top">
-            Cache umgehen und immer frisch abfragen
+            <span data-i18n="viessmann-read.label.forceRefresh"></span>
         </label>
     </div>
-</script>
-
-<script type="text/html" data-help-name="viessmann-read">
-    <p>Liest Datenpunkte der Heizungsanlage über die Viessmann IoT API. Die Anmeldung erledigt die
-    Konfigurations-Node vollautomatisch.</p>
-
-    <h3>Eingang</h3>
-    <dl class="message-properties">
-        <dt class="optional">features <span class="property-type">array</span></dt>
-        <dd>Überschreibt die im Node gewählte Liste für diesen einen Aufruf.</dd>
-        <dt class="optional">pattern <span class="property-type">string</span></dt>
-        <dd>Überschreibt das Muster, z. B. <code>heating.circuits.0.*</code>.</dd>
-        <dt class="optional">refresh <span class="property-type">boolean</span></dt>
-        <dd><code>true</code> umgeht den Cache und fragt frisch ab.</dd>
-    </dl>
-
-    <h3>Ausgang 1 – Daten</h3>
-    <dl class="message-properties">
-        <dt>payload <span class="property-type">object</span></dt>
-        <dd>Abhängig vom gewählten Format:
-        <ul>
-            <li><b>Objekt je Datenpunkt</b>: <code>payload["heating.dhw.temperature.main"].values.value</code></li>
-            <li><b>Flach</b>: <code>payload["heating.dhw.temperature.main"] = 58</code></li>
-            <li><b>Einzeln</b>: je Datenpunkt eine Nachricht mit <code>msg.topic</code> und
-                <code>msg.payload</code> = Wert – direkt an eine MQTT-Out-Node anschließbar</li>
-            <li><b>Rohdaten</b>: unveränderte Antwort der API, das wichtigste Werkzeug bei der Fehlersuche</li>
-        </ul></dd>
-        <dt>viessmann <span class="property-type">object</span></dt>
-        <dd>Zeitstempel, Anzahl und Zusammenfassung (<code>total</code>, <code>available</code>,
-        <code>writable</code>, <code>deprecated</code>).</dd>
-    </dl>
-
-    <h3>Ausgang 2 – Status und Fehler</h3>
-    <p>Meldungen erscheinen nur bei einer <b>Zustandsänderung</b>, nicht in jedem Zyklus. Enthalten sind
-    <code>error</code>, <code>code</code>, <code>statusCode</code>, <code>lastSuccessAgeSeconds</code> und
-    <code>stale</code>.</p>
-
-    <h3>Nicht jedes Gerät kann alles</h3>
-    <p>Die API liefert für jede Anlage dieselbe große Liste und markiert mit <code>isEnabled: false</code>,
-    was das Gerät nicht unterstützt. Mit „Nur tatsächlich vorhandene Datenpunkte ausgeben“ verschwinden
-    solche Einträge. Zum Erkunden den Haken entfernen und die Rohdaten ansehen.</p>
-
-    <h3>Intervall</h3>
-    <p>Die Anlage meldet neue Werte ohnehin nur alle paar Minuten, und die API hat ein Tageslimit.
-    <b>300 Sekunden</b> sind ein guter Startwert; unter 60 Sekunden wird es eng.</p>
-
-    <h3>Veraltete Datenpunkte</h3>
-    <p>Viessmann ersetzt Datenpunkte gelegentlich, etwa
-    <code>heating.dhw.sensors.temperature.hotWaterStorage</code> durch
-    <code>heating.dhw.sensors.temperature.dhwCylinder</code>. Betroffene Einträge tragen
-    <code>deprecated.replacedBy</code> und werden im Editor mit ⚠ markiert.</p>
 </script>

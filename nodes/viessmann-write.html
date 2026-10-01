@@ -16,25 +16,35 @@
         },
         inputs: 1,
         outputs: 2,
-        outputLabels: ['Ergebnis', 'Fehler'],
+        paletteLabel: function () {
+            return this._('viessmann-write.paletteLabel');
+        },
+        outputLabels: function (i) {
+            return this._(i === 0 ? 'viessmann-write.outputs.result' : 'viessmann-write.outputs.error');
+        },
         label: function () {
             if (this.name) return this.name;
             if (this.feature && this.command) return this.command + ' → ' + this.feature.split('.').slice(-2).join('.');
-            return 'Viessmann schreiben';
+            return this._('viessmann-write.paletteLabel');
         },
         oneditprepare: function () {
             var node = this;
+            var _ = this._;
             var catalog = {};
+            var esc = function (s) { return $('<div>').text(String(s)).html(); };
 
             function renderCommands(selectedCommand) {
                 var f = catalog[$('#node-input-feature').val()];
                 var $cmd = $('#node-input-command').empty();
                 if (!f) {
-                    $('<option/>').val(node.command || '').text(node.command || '(erst Datenpunkte laden)').appendTo($cmd);
+                    $('<option/>').val(node.command || '')
+                        .text(node.command || _('viessmann-write.editor.loadFirst')).appendTo($cmd);
                     return;
                 }
                 f.commands.forEach(function (c) {
-                    $('<option/>').val(c.name).text(c.name + (c.executable ? '' : '  (derzeit nicht ausführbar)')).appendTo($cmd);
+                    $('<option/>').val(c.name)
+                        .text(c.name + (c.executable ? '' : '  (' + _('viessmann-write.editor.notExecutable') + ')'))
+                        .appendTo($cmd);
                 });
                 if (selectedCommand) $cmd.val(selectedCommand);
                 renderConstraints();
@@ -48,30 +58,35 @@
                 if (!c) return;
                 var names = Object.keys(c.params || {});
                 if (!names.length) {
-                    $box.append('<div>Dieser Befehl erwartet keine Parameter. <code>msg.payload = {}</code> genügt.</div>');
+                    $box.html('<div>' + _('viessmann-write.editor.noParams') + '</div>');
                     return;
                 }
+                var lim = function (key, v) { return _('viessmann-write.editor.' + key, { v: v }); };
                 var example = {};
-                var html = '<table style="width:100%;font-size:0.85em"><tr><th align="left">Parameter</th><th align="left">Typ</th><th align="left">Grenzen</th></tr>';
+                var html = '<table style="width:100%;font-size:0.85em"><tr>' +
+                    '<th align="left">' + esc(_('viessmann-write.editor.thParam')) + '</th>' +
+                    '<th align="left">' + esc(_('viessmann-write.editor.thType')) + '</th>' +
+                    '<th align="left">' + esc(_('viessmann-write.editor.thLimits')) + '</th></tr>';
                 names.forEach(function (n) {
                     var p = c.params[n];
                     var cs = p.constraints || {};
                     var limits = [];
-                    if (cs.min !== undefined) limits.push('min ' + cs.min);
-                    if (cs.max !== undefined) limits.push('max ' + cs.max);
-                    if (cs.stepping !== undefined) limits.push('Schritt ' + cs.stepping);
+                    if (cs.min !== undefined) limits.push(lim('min', cs.min));
+                    if (cs.max !== undefined) limits.push(lim('max', cs.max));
+                    if (cs.stepping !== undefined) limits.push(lim('step', cs.stepping));
                     if (cs.enum) limits.push(cs.enum.join(' | '));
-                    if (cs.modes) limits.push('Modi ' + cs.modes.join(' | '));
-                    if (cs.maxEntries !== undefined) limits.push('max. ' + cs.maxEntries + ' Einträge/Tag');
-                    if (cs.resolution !== undefined) limits.push('Raster ' + cs.resolution + ' min');
-                    if (cs.minLength !== undefined) limits.push('min. Länge ' + cs.minLength);
-                    if (cs.maxLength !== undefined) limits.push('max. Länge ' + cs.maxLength);
-                    if (cs.regEx) limits.push('Muster ' + cs.regEx);
-                    html += '<tr><td><code>' + n + '</code>' + (p.required ? ' *' : '') + '</td><td>' +
-                            (p.type || '?') + '</td><td>' + (limits.join(', ') || '–') + '</td></tr>';
+                    if (cs.modes) limits.push(lim('modes', cs.modes.join(' | ')));
+                    if (cs.maxEntries !== undefined) limits.push(lim('maxEntries', cs.maxEntries));
+                    if (cs.resolution !== undefined) limits.push(lim('resolution', cs.resolution));
+                    if (cs.minLength !== undefined) limits.push(lim('minLength', cs.minLength));
+                    if (cs.maxLength !== undefined) limits.push(lim('maxLength', cs.maxLength));
+                    if (cs.regEx) limits.push(lim('regEx', cs.regEx));
+                    html += '<tr><td><code>' + esc(n) + '</code>' + (p.required ? ' *' : '') + '</td><td>' +
+                            esc(p.type || '?') + '</td><td>' + esc(limits.join(', ') || '–') + '</td></tr>';
                     example[n] = cs.min !== undefined ? cs.min : (cs.enum ? cs.enum[0] : (p.type === 'number' ? 0 : ''));
                 });
-                html += '</table><div style="margin-top:6px">Beispiel: <code>msg.payload = ' + JSON.stringify(example) + '</code></div>';
+                html += '</table><div style="margin-top:6px">' + esc(_('viessmann-write.editor.example')) +
+                        ': <code>msg.payload = ' + esc(JSON.stringify(example)) + '</code></div>';
                 $box.html(html);
             }
 
@@ -79,10 +94,10 @@
                 var serverId = $('#node-input-server').val();
                 var $info = $('#vm-write-info');
                 if (!serverId || serverId === '_ADD_') {
-                    $info.css('color', '#c62828').text('Bitte zuerst eine Verbindung auswählen und Deploy drücken.');
+                    $info.css('color', '#c62828').text(_('viessmann-write.editor.needServer'));
                     return;
                 }
-                $info.css('color', '#888').text('Lade beschreibbare Datenpunkte …');
+                $info.css('color', '#888').text(_('viessmann-write.editor.loading'));
                 $.getJSON('viessmann/' + serverId + '/features?refresh=true')
                     .done(function (d) {
                         catalog = {};
@@ -95,15 +110,16 @@
                             count++;
                         });
                         if (node.feature && !catalog[node.feature]) {
-                            $('<option/>').val(node.feature).text(node.feature + '  (aktuell nicht verfügbar)').appendTo($sel);
+                            $('<option/>').val(node.feature)
+                                .text(node.feature + '  (' + _('viessmann-write.editor.notAvailable') + ')').appendTo($sel);
                         }
                         $sel.val(node.feature || $sel.find('option:first').val());
                         renderCommands(node.command);
-                        $info.css('color', '#2e7d32').text(count + ' beschreibbare Datenpunkte gefunden.');
+                        $info.css('color', '#2e7d32').text(_('viessmann-write.editor.loaded', { count: count }));
                     })
                     .fail(function (x) {
-                        $info.css('color', '#c62828').text('Fehler: ' +
-                            ((x.responseJSON && x.responseJSON.error) || 'Verbindung noch nicht gespeichert.'));
+                        $info.css('color', '#c62828').text(_('viessmann-write.editor.error') + ': ' +
+                            ((x.responseJSON && x.responseJSON.error) || _('viessmann-write.editor.notSaved')));
                     });
             });
 
@@ -126,167 +142,59 @@
 
 <script type="text/html" data-template-name="viessmann-write">
     <div class="form-row">
-        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
+        <label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="viessmann-write.label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]viessmann-write.placeholder.name">
     </div>
     <div class="form-row">
-        <label for="node-input-server"><i class="fa fa-cog"></i> Verbindung</label>
+        <label for="node-input-server"><i class="fa fa-cog"></i> <span data-i18n="viessmann-write.label.server"></span></label>
         <input type="text" id="node-input-server">
     </div>
     <hr>
     <div class="form-row">
         <button type="button" class="red-ui-button" id="vm-load-catalog">
-            <i class="fa fa-refresh"></i> Beschreibbare Datenpunkte laden
+            <i class="fa fa-refresh"></i> <span data-i18n="viessmann-write.button.load"></span>
         </button>
         <span id="vm-write-info" style="margin-left:8px;font-size:0.85em"></span>
     </div>
     <div class="form-row">
-        <label for="node-input-feature"><i class="fa fa-crosshairs"></i> Datenpunkt</label>
+        <label for="node-input-feature"><i class="fa fa-crosshairs"></i> <span data-i18n="viessmann-write.label.feature"></span></label>
         <select id="node-input-feature" style="width:70%"></select>
     </div>
     <div class="form-row">
-        <label for="node-input-command"><i class="fa fa-bolt"></i> Befehl</label>
+        <label for="node-input-command"><i class="fa fa-bolt"></i> <span data-i18n="viessmann-write.label.command"></span></label>
         <select id="node-input-command" style="width:70%"></select>
     </div>
     <div class="form-row">
-        <label style="width:100%"><i class="fa fa-info-circle"></i> Erlaubte Parameter</label>
+        <label style="width:100%"><i class="fa fa-info-circle"></i> <span data-i18n="viessmann-write.label.allowed"></span></label>
         <div id="vm-constraints" style="border:1px solid #ddd;padding:8px;border-radius:4px;background:#fafafa"></div>
     </div>
     <hr>
     <div class="form-row">
-        <label for="node-input-paramSource"><i class="fa fa-sliders"></i> Parameter</label>
+        <label for="node-input-paramSource"><i class="fa fa-sliders"></i> <span data-i18n="viessmann-write.label.paramSource"></span></label>
         <select id="node-input-paramSource">
-            <option value="payload">aus msg.payload bzw. msg.params</option>
-            <option value="fixed">fest im Node hinterlegt</option>
+            <option value="payload" data-i18n="viessmann-write.paramSource.payload"></option>
+            <option value="fixed" data-i18n="viessmann-write.paramSource.fixed"></option>
         </select>
     </div>
     <div class="form-row vm-row-fixed">
-        <label for="node-input-fixedParams">JSON</label>
-        <input type="text" id="node-input-fixedParams" placeholder='{"temperature": 55}'>
+        <label for="node-input-fixedParams" data-i18n="viessmann-write.label.json"></label>
+        <input type="text" id="node-input-fixedParams" data-i18n="[placeholder]viessmann-write.placeholder.json">
     </div>
     <hr>
     <div class="form-row">
         <label for="node-input-skipIfUnchanged" style="width:auto">
             <input type="checkbox" id="node-input-skipIfUnchanged" style="width:auto;vertical-align:top">
-            Nicht schreiben, wenn der Wert bereits anliegt
+            <span data-i18n="viessmann-write.label.skipIfUnchanged"></span>
         </label>
     </div>
     <div class="form-row">
         <label for="node-input-dryRun" style="width:auto">
             <input type="checkbox" id="node-input-dryRun" style="width:auto;vertical-align:top">
-            <b>Testlauf</b> – alles prüfen, aber nichts senden
+            <b data-i18n="viessmann-write.label.dryRun"></b> <span data-i18n="viessmann-write.label.dryRunHint"></span>
         </label>
     </div>
     <div class="form-row">
-        <label for="node-input-topicPrefix"><i class="fa fa-tags"></i> Topic-Präfix</label>
+        <label for="node-input-topicPrefix"><i class="fa fa-tags"></i> <span data-i18n="viessmann-write.label.topicPrefix"></span></label>
         <input type="text" id="node-input-topicPrefix" placeholder="viessmann">
     </div>
-</script>
-
-<script type="text/html" data-help-name="viessmann-write">
-    <p>Führt Schreibbefehle der Viessmann IoT API aus – zum Beispiel Warmwasser-Solltemperatur setzen,
-    Betriebsart wechseln, Zeitpläne für Warmwasser und Zirkulationspumpe ändern oder eine einmalige
-    Warmwasserladung starten.</p>
-
-    <h3>Bevor irgendetwas geschrieben wird</h3>
-    <p>In der Verbindungs-Konfiguration muss <b>„Schreibzugriff erlauben“</b> gesetzt sein. Ohne diesen
-    Haken lehnt die Node jeden Befehl ab (<code>WRITE_DISABLED</code>) – ein importierter Beispiel-Flow
-    soll nicht ungefragt an der Heizung drehen. Neue Befehle am besten zuerst mit aktiviertem
-    <b>Testlauf</b> ausprobieren.</p>
-
-    <h3>Welche Befehle gibt es?</h3>
-    <p><b>Beschreibbare Datenpunkte laden</b> zeigt genau die Datenpunkte und Befehle, die <i>deine</i>
-    Anlage anbietet, samt den erlaubten Parametern und Grenzen. Verschiedene Geräte bieten
-    unterschiedliche Befehle an – die Liste im Dialog ist maßgeblich, nicht die Beispiele unten.</p>
-
-    <h3>Eingang</h3>
-    <dl class="message-properties">
-        <dt class="optional">feature <span class="property-type">string</span></dt>
-        <dd>Überschreibt den im Node gewählten Datenpunkt.</dd>
-        <dt class="optional">command <span class="property-type">string</span></dt>
-        <dd>Überschreibt den Befehl.</dd>
-        <dt class="optional">params <span class="property-type">object</span></dt>
-        <dd>Parameter des Befehls. Alternativ wird <code>msg.payload</code> verwendet, sofern es ein Objekt ist.</dd>
-    </dl>
-
-    <h3>Beispiele zum Kopieren</h3>
-    <pre>// Warmwasser-Solltemperatur auf 55 °C
-msg.feature = "heating.dhw.temperature.main";
-msg.command = "setTargetTemperature";
-msg.payload = { temperature: 55 };
-
-// Warmwasser sofort einmalig aufheizen (falls vom Gerät angeboten)
-msg.feature = "heating.dhw.oneTimeCharge";
-msg.command = "activate";
-msg.payload = {};
-
-// Betriebsart des Heizkreises 0
-msg.feature = "heating.circuits.0.operating.modes.active";
-msg.command = "setMode";
-msg.payload = { mode: "dhwAndHeating" };
-
-// Heizkurve setzen
-msg.feature = "heating.circuits.0.heating.curve";
-msg.command = "setCurve";
-msg.payload = { slope: 0.6, shift: 2 };
-
-// Raumtemperatur Normalbetrieb
-msg.feature = "heating.circuits.0.operating.programs.normal";
-msg.command = "setTemperature";
-msg.payload = { targetTemperature: 21 };
-
-// Zirkulationspumpe tagsüber an (Zeitplan)
-const day = [{ start: "06:00", end: "21:00", mode: "on", position: 0 }];
-msg.feature = "heating.dhw.pumps.circulation.schedule";
-msg.command = "setSchedule";
-msg.payload = { newSchedule: { mon: day, tue: day, wed: day, thu: day, fri: day, sat: day, sun: day } };
-
-// Zirkulationspumpe dauerhaft aus (leerer Zeitplan)
-msg.payload = { newSchedule: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] } };
-
-// Urlaubsprogramm
-msg.feature = "heating.operating.programs.holiday";
-msg.command = "schedule";
-msg.payload = { start: "2026-12-20", end: "2027-01-03" };</pre>
-
-    <h3>Zeitpläne</h3>
-    <p>Zeitpläne (<code>heating.dhw.schedule</code>, <code>heating.dhw.pumps.circulation.schedule</code>,
-    <code>heating.circuits.N.heating.schedule</code>) werden immer <b>vollständig</b> ersetzt. Grenzen:
-    meist höchstens 4 Einträge pro Tag, 10-Minuten-Raster, erlaubte Modi laut Dialog. Wer einen Plan nur
-    vorübergehend ändern will, liest vorher den aktuellen Plan (<code>values.entries</code>) mit der
-    Lese-Node, sichert ihn und spielt ihn später zurück – siehe Beispiel-Flows im Paket.</p>
-
-    <h3>Schutzmechanismen</h3>
-    <ul>
-        <li><b>Positivliste durch die API</b>: nur Befehle, die das Gerät für diesen Datenpunkt anbietet.</li>
-        <li><b>Wertebereiche</b>: Minimum, Maximum, Schrittweite, Auswahllisten und Muster kommen direkt von
-        Viessmann und werden vor dem Senden geprüft.</li>
-        <li><b>Nur bei Änderung schreiben</b>: Liegt der Zielwert bereits an, wird nichts gesendet
-        (<code>skipped: true</code>). Das gilt für Temperaturen, Betriebsarten, Heizkurven,
-        activate/deactivate und Zeitpläne.</li>
-        <li><b>Mindestabstand</b>: in der Konfiguration einstellbar, schützt vor Schleifen
-        (<code>RATE_GUARD</code>).</li>
-        <li><b>Testlauf</b>: prüft alles und meldet <code>dryRun: true</code>, ohne zu senden.</li>
-    </ul>
-
-    <h3>Ausgang 1 – Ergebnis</h3>
-    <pre>{ ok: true, skipped: false, feature: "...", command: "...",
-  params: {...}, previous: 58, response: {...} }</pre>
-
-    <h3>Ausgang 2 – Fehler</h3>
-    <p>Enthält <code>error</code> und einen <code>code</code>: <code>WRITE_DISABLED</code>,
-    <code>MISSING_TARGET</code>, <code>RATE_GUARD</code>, <code>UNKNOWN_FEATURE</code>,
-    <code>FEATURE_DISABLED</code>, <code>UNKNOWN_COMMAND</code> (mit <code>availableCommands</code>),
-    <code>VALIDATION_FAILED</code> (mit <code>constraints</code>) oder einen API-Fehler mit
-    <code>statusCode</code>.</p>
-
-    <h3>Hinweis</h3>
-    <p>Änderungen brauchen an der Anlage oft ein bis zwei Minuten, bis sie beim Lesen sichtbar werden.
-    Ein geänderter Warmwasser-Zeitplan startet das Aufheizen nur, wenn der Speicher unter dem Sollwert
-    liegt.</p>
-
-    <h3>Haftungsausschluss</h3>
-    <p><b>Nutzung auf eigene Gefahr, ohne Gewähr.</b> Inoffizielles Projekt, keine Verbindung zu
-    Viessmann. Schreibbefehle verändern die Einstellungen der Heizungsanlage; für Schäden oder Kosten
-    wird keine Haftung übernommen. <i>Use at your own risk – no warranty.</i></p>
 </script>

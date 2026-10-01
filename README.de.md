@@ -2,6 +2,18 @@
 
 [English](README.md) · **Deutsch**
 
+## Haftungsausschluss
+
+> **⚠️ Nutzung auf eigene Gefahr – ohne Gewähr.**
+> Dieses Projekt ist ein privates Open-Source-Projekt und steht in keiner Verbindung zur
+> Viessmann Climate Solutions SE. Es wird ohne jede Gewährleistung bereitgestellt. Schreibbefehle
+> verändern die Einstellungen deiner Heizungsanlage. Für Schäden an Anlage, Gebäude oder Daten,
+> Komfortverlust oder Kosten wird keine Haftung übernommen. Die Viessmann-API kann sich jederzeit
+> ändern, eingeschränkt oder abgeschaltet werden. Prüfe Schreibbefehle zuerst im Testlauf und
+> behalte die Anlage im Blick. Details: [LICENSE](LICENSE).
+
+---
+
 Node-RED-Nodes für die **Viessmann IoT API** (ViCare / Vitoconnect): vollautomatische Anmeldung,
 automatische Erkennung der verfügbaren Datenpunkte, Lesen und abgesichertes Schreiben.
 Editor, Hilfetexte und Meldungen auf **Deutsch und Englisch**.
@@ -9,12 +21,6 @@ Editor, Hilfetexte und Meldungen auf **Deutsch und Englisch**.
 [![CI](https://github.com/impact0815/node-red-contrib-viessmann/actions/workflows/ci.yml/badge.svg)](https://github.com/impact0815/node-red-contrib-viessmann/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40impact0815%2Fnode-red-contrib-viessmann.svg)](https://www.npmjs.com/package/@impact0815/node-red-contrib-viessmann)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-> **⚠️ Nutzung auf eigene Gefahr – ohne Gewähr.**
-> Dieses Projekt ist ein privates Open-Source-Projekt und steht in keiner Verbindung zur
-> Viessmann Climate Solutions SE. Es wird ohne jede Gewährleistung bereitgestellt. Schreibbefehle
-> verändern die Einstellungen deiner Heizungsanlage. Für Schäden an Anlage, Gebäude oder Daten,
-> für Komfortverlust oder Kosten wird keine Haftung übernommen. Details: [LICENSE](LICENSE).
 
 ---
 
@@ -143,8 +149,8 @@ landen nie in der Flow-Datei oder einem Export.
 ## Sprache
 
 Dialoge, Hilfetexte, Status- und Fehlermeldungen richten sich nach der in Node-RED eingestellten
-Sprache (*Benutzereinstellungen → Ansicht → Sprache*). Enthalten sind **Deutsch** und **Englisch**;
-für alle anderen Sprachen nimmt Node-RED Englisch. Übersetzungen in weitere Sprachen sind willkommen –
+Sprache (*Benutzereinstellungen → Ansicht → Sprache*). Der vollständige Katalog **en-US** ist Standard
+und Rückfallsprache; **de** enthält die deutsche Übersetzung. Weitere Übersetzungen sind willkommen –
 siehe [Mitarbeit](#mitarbeit).
 
 ---
@@ -323,15 +329,6 @@ Rohdaten der eigenen Anlage (Beispiel 01), bei denen Seriennummern unkenntlich g
 - [Rustimation.eu – Viessmann API und Node-Red](https://www.rustimation.eu/index.php/1_zugang_api/) – die Grundlage für den API-Zugang
 - [Viessmann API Dokumentation](https://api.viessmann-climatesolutions.com/documentation)
 - [Viessmann Developer Portal](https://app.developer.viessmann-climatesolutions.com)
-
----
-
-## Haftungsausschluss
-
-Nutzung auf eigene Gefahr. Dieses Paket ist kein offizielles Produkt von Viessmann und wird ohne
-Gewährleistung bereitgestellt. Die Viessmann-API kann sich jederzeit ändern, eingeschränkt oder
-abgeschaltet werden. Prüfe Schreibbefehle zuerst im Testlauf und behalte die Anlage im Blick.
-Alle Marken gehören ihren jeweiligen Inhabern.
 
 ## Lizenz
 

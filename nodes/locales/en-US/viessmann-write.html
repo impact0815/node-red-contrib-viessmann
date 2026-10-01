@@ -1,4 +1,9 @@
 <script type="text/html" data-help-name="viessmann-write">
+    <h3>Disclaimer</h3>
+    <p><b>Use at your own risk – no warranty.</b> This unofficial project is not affiliated with
+    Viessmann. Write commands change heating-system settings; no liability is accepted for damage,
+    loss of comfort, data loss, or costs.</p>
+
     <p>Executes write commands of the Viessmann IoT API – for example setting the hot water target
     temperature, changing the operating mode, changing schedules for hot water and circulation pump or
     starting a one-time hot water charge.</p>
@@ -98,8 +103,4 @@ msg.payload = { start: "2026-12-20", end: "2027-01-03" };</pre>
     <p>Changes often take one to two minutes before they become visible when reading. A changed hot
     water schedule only starts heating if the cylinder is below the target temperature.</p>
 
-    <h3>Disclaimer</h3>
-    <p><b>Use at your own risk – no warranty.</b> Unofficial project, not affiliated with Viessmann.
-    Write commands change the settings of your heating system; no liability is accepted for any
-    damage or costs.</p>
 </script>

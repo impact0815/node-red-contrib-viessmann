@@ -1,11 +1,11 @@
 name: Publish to npm
 
-# Veröffentlicht auf npm, sobald auf GitHub ein Release veröffentlicht wird.
-# Anmeldung über npm Trusted Publishing (OIDC) – kein NPM_TOKEN nötig.
-# Einmalig auf npmjs.com beim Paket einrichten:
+# Publishes to npm as soon as a release is published on GitHub.
+# Authentication via npm Trusted Publishing (OIDC) – no NPM_TOKEN needed.
+# One-time setup on npmjs.com for the package:
 #   Settings → Trusted Publisher → GitHub Actions
-#   Benutzer: impact0815 · Repository: node-red-contrib-viessmann · Workflow: publish.yml
-# Die allererste Version muss von Hand mit "npm publish" veröffentlicht werden.
+#   Organization or user: impact0815 · Repository: node-red-contrib-viessmann · Workflow: publish.yml
+# The very first version has to be published manually with "npm publish".
 
 on:
   release:
@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 24.x
           registry-url: https://registry.npmjs.org
-      - name: npm mit Trusted-Publishing-Unterstützung (>= 11.5.1)
+      - name: npm with Trusted Publishing support (>= 11.5.1)
         run: npm install -g npm@latest
       - run: npm run lint
       - run: npm test

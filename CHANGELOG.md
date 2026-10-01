@@ -1,59 +1,85 @@
-# Änderungsverlauf
+# Changelog
 
-Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
-Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+versioning according to [Semantic Versioning](https://semver.org/).
+German summary below each entry / Deutsche Kurzfassung jeweils darunter.
+
+## [0.4.1] – 2026-10-01
+
+### Improved
+- Improved multilingual support (en-US as default locale).
+- Harmonized locale structure with node-red-contrib-alphaess-modbus.
+- Moved disclaimer to the beginning of the documentation.
+- Improved README and help text consistency.
+
+**DE:** Standardsprache en-US, Locales an AlphaESS angeglichen, Haftungsausschluss an den Anfang verschoben und Dokumentation vereinheitlicht.
+
+## [0.4.0] – 2026-10-01
+
+### Added
+- **English and German.** Editor dialogs, help texts, node status, error and validation messages
+  follow the Node-RED language setting. Implemented with the official Node-RED i18n mechanism
+  (`nodes/locales/<lang>/`), English is the fallback for all other languages.
+- `README.md` in English, `README.de.md` in German.
+- `test/i18n.test.js`: English and German must have identical keys and placeholders; every key used
+  in editor and runtime must exist; help texts must exist in both languages.
+- Example 02 additionally publishes burner modulation, hours and starts.
+
+### Changed
+- Locale catalogs use `en-US` as the explicit default/reference locale; German remains in `de` and
+  both catalogs are checked for identical keys and placeholders.
+- The disclaimer is now the first section in both READMEs and in every localized Node-RED help page.
+- English UI wording was normalized to US English.
+- Package name with scope: `@impact0815/node-red-contrib-viessmann` (Node-RED naming guidelines).
+  Node types are unchanged – existing flows and connections keep working.
+- Errors now carry a translatable `key` plus `params`; the machine-readable `code` values are
+  unchanged.
+- Example flows: node names in English, descriptions bilingual. Example 02 uses English field names
+  and `null` for values the device does not deliver.
+- Publishing via npm Trusted Publishing (OIDC) instead of a stored token.
+- Code comments in English.
+
+### Fixed
+- CI: the test call now works with Node 18 and 20.
+
+**DE:** Zweisprachig (Deutsch/Englisch) für Dialoge, Hilfe, Status- und Fehlermeldungen über das
+offizielle Node-RED-i18n; `en-US` als Standard und Rückfallsprache; Haftungsausschluss am Anfang aller
+README- und Hilfetexte; README auf Englisch und Deutsch; Paketname mit Scope; Beispiel-Flows mit
+englischen Node-Namen und zweisprachigen Beschreibungen; Veröffentlichung per Trusted Publishing.
 
 ## [0.3.1] – 2026-09-30
 
-Erste im Echtbetrieb getestete und auf npm veröffentlichte Version.
+### Fixed
+- **"Invalid redirection URI" despite a correct address:** the authorize URL is now built exactly
+  like in the proven Rustimation flow (redirect URI unencoded, scope with `%20`).
+- Whitespace around the redirect URI is removed.
 
-### Geändert
-- **Paketname mit Scope:** `@impact0815/node-red-contrib-viessmann`, wie es die Node-RED-Richtlinien
-  für neue Pakete verlangen. Die Node-Typen (`viessmann-config`, `viessmann-read`, `viessmann-write`)
-  sind unverändert – bestehende Flows und Verbindungen funktionieren weiter.
-- Veröffentlichung über npm Trusted Publishing (OIDC) statt eines gespeicherten Tokens.
+### Improved
+- Clear disclaimer (DE/EN) in README and editor help.
+- Redirect URI errors show the address that was actually sent (`REDIRECT_URI_MISMATCH`).
+- "Only write on change" also applies to schedules (`setSchedule`), independent of order.
+- Write node shows schedule limits (modes, entries per day, grid).
+- Four example flows: first steps, read → MQTT, circulation pump temporary, hot water temporary.
 
-### Behoben
-- **„Invalid redirection URI“ trotz korrekter Adresse:** Die Autorisierungs-URL wird jetzt exakt wie
-  im bewährten Rustimation-Flow aufgebaut (Redirect-URI unkodiert, Scope mit `%20`). Die
-  standardkonforme Kodierung lehnt der Viessmann-Server ab.
-- Leerzeichen vor oder nach der Redirect-URI werden entfernt.
-- CI: Testaufruf funktioniert jetzt auch mit Node 18 und 20.
-
-### Verbessert
-- Deutlicher Haftungsausschluss (DE/EN) in README und Editor-Hilfe.
-- Fehlermeldungen zur Redirect-URI nennen die tatsächlich gesendete Adresse (`REDIRECT_URI_MISMATCH`).
-- „Nur bei Änderung schreiben“ gilt jetzt auch für Zeitpläne (`setSchedule`); der Vergleich ist
-  unabhängig von der Reihenfolge der Tage und Einträge.
-- Die Schreib-Node zeigt bei Zeitplänen die Grenzen Modi, Einträge pro Tag und Raster an.
-- Hilfetexte deutlich erweitert: Auswertung in Function-Nodes, Durchreichen von Nachrichten-
-  Eigenschaften, Zeitpläne, veraltete Datenpunkte, vollständige Fehlercodes.
-
-### Neu
-- Vier Beispiel-Flows unter *Import → Beispiele*: Erste Schritte, Abfrage → MQTT,
-  Zirkulationspumpe temporär, Warmwasser temporär.
-- `npm run lint` prüft zusätzlich Beispiel-Flows (Verbindungen, Function-Code, keine Zugangsdaten),
-  den Paketnamen mit Scope, den CHANGELOG-Eintrag zur Version und den Haftungsausschluss.
+**DE:** Behebt „Invalid redirection URI“; Haftungsausschluss; Zeitplan-Vergleich; vier Beispiel-Flows.
 
 ## [0.3.0] – 2026-09-30
 
-### Neu
-- **Vollautomatische Anmeldung ohne Nutzerinteraktion.** Eingetragen werden nur Client-ID,
-  Redirect-URI, optional die Code Challenge sowie ViCare-Benutzername und -Passwort.
-- Richtige Reihenfolge beim Erststart: ohne Refresh Token direkt anmelden; abgelehntes Refresh
-  Token führt zur automatischen Neuanmeldung, Netzwerkfehler nicht.
-- Authorization Code wird direkt aus dem `Location`-Header gelesen – kein `http in`-Node nötig.
-- Code Challenge im Dialog erzeugbar, wird geprüft oder automatisch gebildet.
-- „Verbindung testen“ funktioniert vor dem ersten Deploy.
+### Added
+- **Fully automatic login without user interaction** – only client ID, redirect URI, optional code
+  challenge, ViCare username and password are needed.
+- Correct order on first start: without refresh token log in directly; a rejected refresh token
+  leads to an automatic new login, network errors do not.
+- Authorization code read directly from the `Location` header – no `http in` node required.
+- "Test connection" works before the first deploy.
 
-### Entfernt
-- Browser-Assistent und Hilfsskript für das Refresh Token (durch die Automatik überflüssig).
+**DE:** Vollautomatische Anmeldung ohne Nutzerinteraktion, richtige Reihenfolge beim Erststart.
 
 ## [0.2.0] – 2026-09-29
-- Anmeldung per Browser-Assistent im Editor.
+- Login via a browser assistant in the editor. / Anmeldung per Browser-Assistent.
 
 ## [0.1.0] – 2026-09-29
-- Erste Version: Konfigurations-, Lese- und Schreib-Node, Auto-Discovery, Validierung gegen
-  API-Constraints, Tests gegen einen Simulator.
-- Der Zugangsweg zur API folgt der Anleitung von
+- First version: configuration, read and write node, auto-discovery, validation against API
+  constraints, tests against a simulator. API access based on the guide by
   [Rustimation.eu](https://www.rustimation.eu/index.php/1_zugang_api/).
+  / Erste Version.

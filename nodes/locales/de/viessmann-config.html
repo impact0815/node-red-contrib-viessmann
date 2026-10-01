@@ -1,4 +1,9 @@
 <script type="text/html" data-help-name="viessmann-config">
+    <h3>Haftungsausschluss</h3>
+    <p><b>Nutzung auf eigene Gefahr – ohne Gewähr.</b> Dieses inoffizielle Projekt steht in keiner
+    Verbindung zu Viessmann. Schreibbefehle verändern Einstellungen der Heizungsanlage; für Schäden,
+    Komfortverlust, Datenverlust oder Kosten wird keine Haftung übernommen.</p>
+
     <p>Zentrale Verbindung zur Viessmann IoT API. Die Node meldet sich <b>vollautomatisch</b> an,
     holt und erneuert alle Token selbst und teilt einen gemeinsamen Datencache mit allen Lese- und
     Schreib-Nodes.</p>
@@ -92,11 +97,6 @@
         <dd>Kein Internet aus dem Container. Test:
         <code>docker exec node-red ping -c1 api.viessmann-climatesolutions.com</code></dd>
     </dl>
-
-    <h3>Haftungsausschluss</h3>
-    <p><b>Nutzung auf eigene Gefahr, ohne Gewähr.</b> Inoffizielles Projekt, keine Verbindung zu
-    Viessmann. Schreibbefehle verändern die Einstellungen der Heizungsanlage; für Schäden oder Kosten
-    wird keine Haftung übernommen.</p>
 
     <p><i>Der Zugangsweg zur API folgt der Anleitung von
     <a href="https://www.rustimation.eu/index.php/1_zugang_api/" target="_blank" rel="noopener">Rustimation.eu</a>.

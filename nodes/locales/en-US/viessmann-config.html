@@ -1,4 +1,9 @@
 <script type="text/html" data-help-name="viessmann-config">
+    <h3>Disclaimer</h3>
+    <p><b>Use at your own risk – no warranty.</b> This unofficial project is not affiliated with
+    Viessmann. Write commands change heating-system settings; no liability is accepted for damage,
+    loss of comfort, data loss, or costs.</p>
+
     <p>Central connection to the Viessmann IoT API. The node logs in <b>fully automatically</b>,
     fetches and renews all tokens by itself and shares one data cache with all read and write nodes.</p>
 
@@ -29,7 +34,7 @@
         <dd>The PKCE secret of the login. Reuse one from an existing flow, create a new one with
         <b>generate</b> or leave it empty – then the node creates a fresh one for every login.</dd>
 
-        <dt>User name / password</dt>
+        <dt>Username / password</dt>
         <dd>The credentials of the <b>ViCare app</b>. Both are stored encrypted in the Node-RED
         credentials and never end up in the flow file or an export.</dd>
     </dl>
@@ -40,7 +45,7 @@
     <ol>
         <li><b>Refresh token present?</b> Then it is used to get an access token.</li>
         <li><b>No refresh token</b> (first start) or <b>rejected</b> by Viessmann? Then the node logs in
-        with user name and password, reads the authorization code from the redirect and exchanges it
+        with username and password, reads the authorization code from the redirect and exchanges it
         for new tokens.</li>
         <li>The access token is renewed shortly before it expires, and immediately after an HTTP 401.</li>
         <li>On network errors the node does <b>not</b> log in again – that would not help.</li>
@@ -75,7 +80,7 @@
         <dt>"Viessmann requires an interactive login"</dt>
         <dd>Google reCAPTCHA is still enabled in the portal, or the redirect URI differs.</dd>
         <dt>"Login rejected (HTTP 401)"</dt>
-        <dd>ViCare user name or password wrong.</dd>
+        <dd>ViCare username or password is incorrect.</dd>
         <dt>"Redeeming the authorization code failed"</dt>
         <dd>Usually a different redirect URI or client ID.</dd>
         <dt>"Invalid code challenge"</dt>
@@ -89,11 +94,6 @@
         <dd>No internet from the container. Test:
         <code>docker exec node-red ping -c1 api.viessmann-climatesolutions.com</code></dd>
     </dl>
-
-    <h3>Disclaimer</h3>
-    <p><b>Use at your own risk – no warranty.</b> Unofficial project, not affiliated with Viessmann.
-    Write commands change the settings of your heating system; no liability is accepted for any
-    damage or costs.</p>
 
     <p><i>The API access follows the guide by
     <a href="https://www.rustimation.eu/index.php/1_zugang_api/" target="_blank" rel="noopener">Rustimation.eu</a>.

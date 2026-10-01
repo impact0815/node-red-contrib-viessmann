@@ -1,10 +1,10 @@
 /**
- * Lese-Node: holt Datenpunkte von der Viessmann-API, filtert sie und gibt sie
- * im gewünschten Format aus.
+ * Read node: fetches data points from the Viessmann API, filters them and
+ * outputs them in the selected format.
  *
- * Ausgang 1: Daten
- * Ausgang 2: Status/Fehler (bewusst getrennt, damit nachgelagerte Logik nie
- *            eine Fehlermeldung für einen Messwert hält)
+ * Output 1: data
+ * Output 2: status/errors (deliberately separate so downstream logic never
+ *           mistakes an error message for a measured value)
  */
 
 'use strict';
@@ -12,6 +12,8 @@
 const featuresLib = require('../lib/features');
 
 module.exports = function (RED) {
+    const t = (key, params) => RED._('viessmann-read.' + key, params || {});
+
     function ViessmannReadNode(config) {
         RED.nodes.createNode(this, config);
         const node = this;
@@ -23,9 +25,9 @@ module.exports = function (RED) {
         node.outputFormat = config.outputFormat || 'object'; // object | flat | split | raw
         node.onlyAvailable = config.onlyAvailable !== false;
         node.topicPrefix = config.topicPrefix || 'viessmann';
-        node.interval = Math.max(0, Number(config.interval) || 0);       // Sekunden, 0 = nur auf Eingang
+        node.interval = Math.max(0, Number(config.interval) || 0);       // seconds, 0 = on input only
         node.startupDelay = Math.max(0, Number(config.startupDelay) || 10);
-        node.staleAfter = Math.max(0, Number(config.staleAfter) || 900); // Sekunden
+        node.staleAfter = Math.max(0, Number(config.staleAfter) || 900); // seconds
         node.forceRefresh = config.forceRefresh === true;
 
         let timer = null;
@@ -34,11 +36,11 @@ module.exports = function (RED) {
         let lastAlarm = '';
 
         if (!node.server) {
-            node.status({ fill: 'red', shape: 'ring', text: 'keine Konfiguration' });
+            node.status({ fill: 'red', shape: 'ring', text: t('status.noServer') });
             return;
         }
 
-        const ts = () => new Date().toLocaleTimeString('de-DE');
+        const ts = () => new Date().toLocaleTimeString();
 
         function selectFeatures(list, msg) {
             let selected = list;
@@ -90,17 +92,19 @@ module.exports = function (RED) {
 
                 lastOk = Date.now();
                 if (lastAlarm) {
-                    // Nur bei Zustandswechsel melden, nicht in jedem Zyklus.
+                    // Report state changes only, not every cycle.
                     lastAlarm = '';
-                    send([null, { topic: `${node.topicPrefix}/status`, payload: { ok: true, message: 'Verbindung wiederhergestellt' } }]);
+                    send([null, { topic: `${node.topicPrefix}/status`, payload: { ok: true, message: t('status.restored') } }]);
                 }
 
                 for (const m of buildMessages(selected, list, msg)) send([m, null]);
 
                 const s = featuresLib.summarize(list);
-                node.status({ fill: 'green', shape: 'dot', text: `${ts()}: ${selected.length} Werte (${s.available}/${s.total} verfügbar)` });
+                node.status({ fill: 'green', shape: 'dot',
+                    text: t('status.ok', { time: ts(), count: selected.length, available: s.available, total: s.total }) });
                 if (done) done();
             } catch (err) {
+                const text = node.server.translateError(err);
                 const age = lastOk ? Math.round((Date.now() - lastOk) / 1000) : null;
                 const stale = node.staleAfter > 0 && lastOk > 0 && (Date.now() - lastOk) > node.staleAfter * 1000;
                 const signature = `${err.code || 'ERR'}:${err.message}`;
@@ -111,7 +115,7 @@ module.exports = function (RED) {
                         topic: `${node.topicPrefix}/status`,
                         payload: {
                             ok: false,
-                            error: err.message,
+                            error: text,
                             code: err.code || null,
                             statusCode: err.statusCode || null,
                             retryAfter: err.retryAfter || null,
@@ -120,7 +124,7 @@ module.exports = function (RED) {
                         }
                     }]);
                 }
-                node.status({ fill: stale || !lastOk ? 'red' : 'yellow', shape: 'ring', text: `${ts()}: ${err.message}`.slice(0, 90) });
+                node.status({ fill: stale || !lastOk ? 'red' : 'yellow', shape: 'ring', text: `${ts()}: ${text}`.slice(0, 90) });
                 if (done) done();
             }
         }
@@ -133,9 +137,9 @@ module.exports = function (RED) {
                 poll({}, send, null);
                 timer = setInterval(() => poll({}, send, null), node.interval * 1000);
             }, node.startupDelay * 1000);
-            node.status({ fill: 'grey', shape: 'ring', text: `Start in ${node.startupDelay}s` });
+            node.status({ fill: 'grey', shape: 'ring', text: t('status.startIn', { s: node.startupDelay }) });
         } else {
-            node.status({ fill: 'grey', shape: 'ring', text: 'bereit' });
+            node.status({ fill: 'grey', shape: 'ring', text: t('status.ready') });
         }
 
         node.on('close', function (done) {

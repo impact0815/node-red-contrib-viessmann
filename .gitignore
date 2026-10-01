@@ -2,11 +2,14 @@ node_modules/
 npm-debug.log*
 package-lock.json
 *.tgz
+*.zip
 .env
 .DS_Store
 Thumbs.db
+desktop.ini
 *:Zone.Identifier
 *.Zone.Identifier
 .vscode/
 .idea/
 coverage/
+*.dat

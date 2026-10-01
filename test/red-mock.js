@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 
 const NODES = ['viessmann-config', 'viessmann-read', 'viessmann-write'];
+const DEFAULT_LOCALE = 'en-US';
 
 function loadCatalog(name, lang) {
     const file = path.join(__dirname, '..', 'nodes', 'locales', lang, name + '.json');
@@ -27,7 +28,7 @@ function translator(catalog) {
     };
 }
 
-function makeRED(lang = 'en-US') {
+function makeRED(lang = DEFAULT_LOCALE) {
     const types = {};
     const instances = {};
     const routes = { get: {}, post: {} };
@@ -69,4 +70,4 @@ function makeRED(lang = 'en-US') {
     return RED;
 }
 
-module.exports = { makeRED, loadCatalog, NODES };
+module.exports = { makeRED, loadCatalog, NODES, DEFAULT_LOCALE };

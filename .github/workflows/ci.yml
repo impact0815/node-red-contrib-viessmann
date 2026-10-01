@@ -18,10 +18,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm install --no-audit --no-fund
-      - name: Syntax, Editor-Dateien und Paketangaben prüfen
+      - name: Syntax, editor files, locales, package fields and examples
         run: npm run lint
-      - name: Tests
+      - name: Tests (incl. translation consistency)
         run: npm test
-      - name: Paketinhalt prüfen
+      - name: Package contents
         run: npm pack --dry-run

@@ -19,7 +19,8 @@ const path = require('path');
 const { ERRORS, VALIDATION } = require('../lib/errors');
 const { loadCatalog, NODES } = require('./red-mock');
 
-const LANGS = ['en-US', 'de'];
+const DEFAULT_LOCALE = 'en-US';
+const LANGS = [DEFAULT_LOCALE, 'de'];
 const root = path.join(__dirname, '..');
 
 function flatKeys(obj, prefix = '') {
@@ -38,12 +39,12 @@ for (const name of NODES) {
     const cats = Object.fromEntries(LANGS.map((l) => [l, flatKeys(loadCatalog(name, l))]));
 
     test(`${name}: English and German catalogs have the same keys`, () => {
-        assert.deepStrictEqual(Object.keys(cats.de).sort(), Object.keys(cats['en-US']).sort());
+        assert.deepStrictEqual(Object.keys(cats.de).sort(), Object.keys(cats[DEFAULT_LOCALE]).sort());
     });
 
     test(`${name}: translations use the same placeholders`, () => {
-        for (const key of Object.keys(cats['en-US'])) {
-            assert.strictEqual(placeholders(cats.de[key]), placeholders(cats['en-US'][key]), key);
+        for (const key of Object.keys(cats[DEFAULT_LOCALE])) {
+            assert.strictEqual(placeholders(cats.de[key]), placeholders(cats[DEFAULT_LOCALE][key]), key);
         }
     });
 
@@ -59,7 +60,7 @@ for (const name of NODES) {
         for (const m of js.matchAll(/\bt\('([\w.]+)'/g)) used.add(`${name}.${m[1]}`);
         for (const key of used) {
             if (key.endsWith('.')) continue; // dynamic prefix, e.g. 'runtime.errors.' + key
-            assert.ok(cats['en-US'][key] !== undefined, `missing key ${key}`);
+            assert.ok(cats[DEFAULT_LOCALE][key] !== undefined, `missing key ${key}`);
         }
     });
 
@@ -67,6 +68,11 @@ for (const name of NODES) {
         for (const lang of LANGS) {
             const help = fs.readFileSync(path.join(root, 'nodes', 'locales', lang, name + '.html'), 'utf8');
             assert.ok(help.includes(`data-help-name="${name}"`), `${lang}/${name}.html`);
+            const firstHeading = help.match(/<h3>([^<]+)<\/h3>/);
+            const expected = lang === DEFAULT_LOCALE ? 'Disclaimer' : 'Haftungsausschluss';
+            assert.strictEqual(firstHeading && firstHeading[1], expected, `${lang}/${name}.html disclaimer must come first`);
+            assert.strictEqual((help.match(new RegExp(`<h3>${expected}<\\/h3>`, 'g')) || []).length, 1,
+                `${lang}/${name}.html must contain exactly one disclaimer`);
         }
         const main = fs.readFileSync(path.join(root, 'nodes', name + '.html'), 'utf8');
         assert.ok(!main.includes('data-help-name'), 'help must live in locales/, not in the main html');
@@ -92,8 +98,8 @@ test('every validation key is translated', () => {
 });
 
 test('the English catalog matches the English defaults in lib/errors.js', () => {
-    const cfg = loadCatalog('viessmann-config', 'en-US')['viessmann-config'].runtime.errors;
-    const wr = loadCatalog('viessmann-write', 'en-US')['viessmann-write'].validation;
+    const cfg = loadCatalog('viessmann-config', DEFAULT_LOCALE)['viessmann-config'].runtime.errors;
+    const wr = loadCatalog('viessmann-write', DEFAULT_LOCALE)['viessmann-write'].validation;
     assert.deepStrictEqual(cfg, ERRORS);
     assert.deepStrictEqual(wr, VALIDATION);
 });

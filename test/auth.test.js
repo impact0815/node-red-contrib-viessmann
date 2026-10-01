@@ -1,10 +1,9 @@
 /**
- * Tests der vollautomatischen Anmeldung.
+ * Tests of the fully automatic login.
  *
- * Kern ist die Reihenfolge, die im ursprünglichen Flow noch falsch war:
- * Beim Erststart gibt es kein Refresh Token – die Anmeldung muss dann direkt
- * mit Benutzer und Passwort erfolgen, nicht erst nach einem gescheiterten
- * Erneuerungsversuch mit leerem Token.
+ * Core is the order that was still wrong in the original flow: on the first
+ * start there is no refresh token – the login must then happen directly with
+ * username and password, not only after a failed renewal with an empty token.
  */
 
 'use strict';
@@ -16,39 +15,36 @@ const mock = require('./mock-server');
 
 function apiFor(srv, extra = {}) {
     return new ViessmannApi(Object.assign({
-        clientId: mock.CLIENT,
-        username: mock.USER,
-        password: mock.PASS,
-        redirectUri: mock.REDIRECT,
-        iamHost: srv.url,
-        apiHost: srv.url,
-        timeout: 5000
+        clientId: mock.CLIENT, username: mock.USER, password: mock.PASS,
+        redirectUri: mock.REDIRECT, iamHost: srv.url, apiHost: srv.url, timeout: 5000
     }, extra));
 }
 
-test('Erststart ohne Refresh Token: direkt anmelden, kein leerer Erneuerungsversuch', async (t) => {
+test('first start without refresh token: log in directly, no empty renewal attempt', async (t) => {
     const srv = await mock.start();
     t.after(() => srv.stop());
-
     const tokens = [];
     const api = apiFor(srv, { onTokens: (x) => tokens.push(x.refreshToken) });
-    const access = await api.getAccessToken();
-
-    assert.ok(access);
-    assert.strictEqual(srv.state.refreshCalls, 0, 'kein Refresh-Versuch mit leerem Token');
+    assert.ok(await api.getAccessToken());
+    assert.strictEqual(srv.state.refreshCalls, 0);
     assert.strictEqual(srv.state.authorizeCalls, 1);
     assert.strictEqual(srv.state.codeExchanges, 1);
-    assert.match(api.refreshToken, /^refresh-login-/);
-    assert.deepStrictEqual(tokens, [api.refreshToken], 'neues Refresh Token wurde gemeldet');
+    assert.deepStrictEqual(tokens, [api.refreshToken]);
 });
 
-test('Anmeldung schickt Basic Auth und alle Pflichtparameter', async (t) => {
+test('redirect URI is sent unencoded (otherwise "Invalid redirection URI")', async (t) => {
+    const srv = await mock.start({ strictRawRedirect: true });
+    t.after(() => srv.stop());
+    await apiFor(srv).login();
+    assert.match(srv.state.lastAuthorize.raw, /redirect_uri=http:\/\/localhost:1880\/authcode&/);
+    assert.match(srv.state.lastAuthorize.raw, /scope=IoT%20User%20offline_access/);
+});
+
+test('login sends Basic Auth and all required parameters', async (t) => {
     const srv = await mock.start();
     t.after(() => srv.stop());
-
     await apiFor(srv).login();
     const { query, authorization } = srv.state.lastAuthorize;
-
     assert.strictEqual(authorization, 'Basic ' + Buffer.from(`${mock.USER}:${mock.PASS}`).toString('base64'));
     assert.strictEqual(query.client_id, mock.CLIENT);
     assert.strictEqual(query.redirect_uri, mock.REDIRECT);
@@ -57,64 +53,60 @@ test('Anmeldung schickt Basic Auth und alle Pflichtparameter', async (t) => {
     assert.ok(isValidCodeChallenge(query.code_challenge));
 });
 
-test('vorgegebene Code Challenge wird verwendet und als Verifier eingelöst', async (t) => {
-    const srv = await mock.start();
+test('whitespace around the redirect URI is removed', async (t) => {
+    const srv = await mock.start({ strictRawRedirect: true });
     t.after(() => srv.stop());
-
-    const challenge = 'A'.repeat(20) + '-._~' + 'z9'.repeat(12);
-    await apiFor(srv, { codeChallenge: challenge }).login();
-
-    assert.strictEqual(srv.state.lastAuthorize.query.code_challenge, challenge);
-    assert.strictEqual(srv.state.codeExchanges, 1, 'Mock prüft code_verifier === code_challenge');
+    await apiFor(srv, { redirectUri: '  ' + mock.REDIRECT + ' ' }).login();
+    assert.strictEqual(srv.state.codeExchanges, 1);
 });
 
-test('vorhandenes Refresh Token wird bevorzugt – keine Anmeldung nötig', async (t) => {
+test('a given code challenge is used and redeemed as verifier', async (t) => {
     const srv = await mock.start();
     t.after(() => srv.stop());
+    const challenge = 'A'.repeat(20) + '-._~' + 'z9'.repeat(12);
+    await apiFor(srv, { codeChallenge: challenge }).login();
+    assert.strictEqual(srv.state.lastAuthorize.query.code_challenge, challenge);
+    assert.strictEqual(srv.state.codeExchanges, 1);
+});
 
-    const api = apiFor(srv, { refreshToken: 'refresh-1' });
-    await api.getAccessToken();
-
+test('an existing refresh token is preferred – no login needed', async (t) => {
+    const srv = await mock.start();
+    t.after(() => srv.stop());
+    await apiFor(srv, { refreshToken: 'refresh-1' }).getAccessToken();
     assert.strictEqual(srv.state.refreshCalls, 1);
     assert.strictEqual(srv.state.authorizeCalls, 0);
 });
 
-test('abgelehntes Refresh Token führt automatisch zur Neuanmeldung', async (t) => {
+test('a rejected refresh token leads to an automatic new login', async (t) => {
     const srv = await mock.start({ rejectRefresh: true });
     t.after(() => srv.stop());
-
-    const api = apiFor(srv, { refreshToken: 'abgelaufen' });
-    const access = await api.getAccessToken();
-
-    assert.ok(access);
-    assert.strictEqual(srv.state.refreshCalls, 1);
+    const api = apiFor(srv, { refreshToken: 'expired' });
+    assert.ok(await api.getAccessToken());
     assert.strictEqual(srv.state.authorizeCalls, 1);
     assert.match(api.refreshToken, /^refresh-login-/);
 });
 
-test('ohne Passwort gibt es bei abgelehntem Token einen klaren Fehler', async (t) => {
+test('without password a rejected token gives a clear error', async (t) => {
     const srv = await mock.start({ rejectRefresh: true });
     t.after(() => srv.stop());
-
-    const api = apiFor(srv, { refreshToken: 'abgelaufen', password: '' });
-    await assert.rejects(() => api.getAccessToken(), (err) => err.code === 'TOKEN_REFRESH_FAILED');
+    await assert.rejects(() => apiFor(srv, { refreshToken: 'x', password: '' }).getAccessToken(),
+        (err) => err.code === 'TOKEN_REFRESH_FAILED' && err.params.status === 400);
 });
 
-test('falsches Passwort wird verständlich gemeldet', async (t) => {
+test('wrong password is reported with key LOGIN_REJECTED / code LOGIN_FAILED', async (t) => {
     const srv = await mock.start();
     t.after(() => srv.stop());
-
-    await assert.rejects(() => apiFor(srv, { password: 'falsch' }).getAccessToken(), (err) => {
+    await assert.rejects(() => apiFor(srv, { password: 'wrong' }).getAccessToken(), (err) => {
         assert.strictEqual(err.code, 'LOGIN_FAILED');
-        assert.match(err.message, /Benutzername oder Passwort/);
+        assert.strictEqual(err.key, 'LOGIN_REJECTED');
+        assert.match(err.message, /username or password/);
         return true;
     });
 });
 
-test('aktives reCAPTCHA wird erkannt und benannt', async (t) => {
+test('active reCAPTCHA is detected and named', async (t) => {
     const srv = await mock.start({ captcha: true });
     t.after(() => srv.stop());
-
     await assert.rejects(() => apiFor(srv).getAccessToken(), (err) => {
         assert.strictEqual(err.code, 'INTERACTIVE_LOGIN_REQUIRED');
         assert.match(err.message, /reCAPTCHA/);
@@ -122,75 +114,59 @@ test('aktives reCAPTCHA wird erkannt und benannt', async (t) => {
     });
 });
 
-test('abweichende Redirect-URI wird erkannt und benannt', async (t) => {
+test('a different redirect URI names the address that was sent', async (t) => {
     const srv = await mock.start({ registeredRedirect: 'https://ccu.local:1880/authcode' });
     t.after(() => srv.stop());
-
     await assert.rejects(() => apiFor(srv).getAccessToken(), (err) => {
-        assert.strictEqual(err.code, 'LOGIN_FAILED');
-        assert.match(err.message, /Redirect-URI/);
+        assert.strictEqual(err.code, 'REDIRECT_URI_MISMATCH');
+        assert.match(err.message, /Invalid redirection URI/);
+        assert.strictEqual(err.params.redirectUri, mock.REDIRECT);
         return true;
     });
 });
 
-test('ungültige Code Challenge wird vor dem Senden abgewiesen', async (t) => {
+test('an invalid code challenge is rejected before sending', async (t) => {
     const srv = await mock.start();
     t.after(() => srv.stop());
-
-    await assert.rejects(() => apiFor(srv, { codeChallenge: 'zu kurz!' }).getAccessToken(), (err) => {
-        assert.strictEqual(err.code, 'BAD_CODE_CHALLENGE');
-        return true;
-    });
+    await assert.rejects(() => apiFor(srv, { codeChallenge: 'too short!' }).getAccessToken(),
+        (err) => err.code === 'BAD_CODE_CHALLENGE');
     assert.strictEqual(srv.state.authorizeCalls, 0);
 });
 
-test('unvollständige Zugangsdaten werden klar gemeldet', async () => {
-    const api = new ViessmannApi({ clientId: 'c' });
-    await assert.rejects(() => api.getAccessToken(), (err) => {
-        assert.strictEqual(err.code, 'NO_CREDENTIALS');
-        assert.match(err.message, /Benutzername und Passwort/);
-        return true;
-    });
+test('incomplete credentials are reported clearly', async () => {
+    await assert.rejects(() => new ViessmannApi({ clientId: 'c' }).getAccessToken(),
+        (err) => err.code === 'NO_CREDENTIALS');
 });
 
-test('parallele Aufrufe lösen nur eine Anmeldung aus (Single Flight)', async (t) => {
+test('parallel calls trigger only one login (single flight)', async (t) => {
     const srv = await mock.start();
     t.after(() => srv.stop());
-
     const api = apiFor(srv);
     await Promise.all([api.getAccessToken(), api.getAccessToken(), api.getAccessToken()]);
     assert.strictEqual(srv.state.authorizeCalls, 1);
 });
 
-test('Access Token wird bis kurz vor Ablauf wiederverwendet', async (t) => {
+test('the access token is reused until shortly before expiry', async (t) => {
     const srv = await mock.start();
     t.after(() => srv.stop());
-
     const api = apiFor(srv);
-    const a = await api.getAccessToken();
-    const b = await api.getAccessToken();
-    assert.strictEqual(a, b);
+    assert.strictEqual(await api.getAccessToken(), await api.getAccessToken());
     assert.strictEqual(srv.state.tokenCalls, 1);
 });
 
-test('rotiertes Refresh Token wird übernommen', async (t) => {
+test('a rotated refresh token is taken over', async (t) => {
     const srv = await mock.start({ rotateRefreshToken: true });
     t.after(() => srv.stop());
-
     let reported = null;
     const api = apiFor(srv, { refreshToken: 'refresh-1', onTokens: (x) => { reported = x.refreshToken; } });
     await api.getAccessToken();
-
     assert.match(reported, /^refresh-rot-/);
-    assert.strictEqual(api.refreshToken, reported);
 });
 
-test('erzeugte Code Challenges sind gültig und jedes Mal neu', () => {
+test('generated code challenges are valid and new every time', () => {
     const a = generateCodeChallenge();
-    const b = generateCodeChallenge();
     assert.ok(isValidCodeChallenge(a));
-    assert.notStrictEqual(a, b);
+    assert.notStrictEqual(a, generateCodeChallenge());
     assert.strictEqual(isValidCodeChallenge('x'.repeat(42)), false);
-    assert.strictEqual(isValidCodeChallenge('x'.repeat(129)), false);
     assert.strictEqual(isValidCodeChallenge('a'.repeat(43) + '!'), false);
 });

@@ -1,337 +1,332 @@
 # @impact0815/node-red-contrib-viessmann
 
-Node-RED-Nodes für die **Viessmann IoT API** (ViCare / Vitoconnect): vollautomatische Anmeldung,
-automatische Erkennung der verfügbaren Datenpunkte, Lesen und abgesichertes Schreiben.
+**English** · [Deutsch](README.de.md)
+
+## Disclaimer
+
+> **⚠️ Use at your own risk – no warranty.**
+> This is an unofficial community project and is not affiliated with Viessmann Climate Solutions SE.
+> It is provided "as is", without warranty of any kind. Write commands change the settings of your
+> heating system. The authors accept no liability for damage to the system, building or data, loss of
+> comfort, or costs. The Viessmann API may change, be restricted, or be discontinued at any time.
+> Test write commands in dry-run mode first and monitor your system. See [LICENSE](LICENSE).
+
+---
+
+Node-RED nodes for the **Viessmann IoT API** (ViCare / Vitoconnect): fully automatic login,
+automatic discovery of the available data points, reading and safeguarded writing.
+Editor, help texts and messages in **English and German**.
 
 [![CI](https://github.com/impact0815/node-red-contrib-viessmann/actions/workflows/ci.yml/badge.svg)](https://github.com/impact0815/node-red-contrib-viessmann/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40impact0815%2Fnode-red-contrib-viessmann.svg)](https://www.npmjs.com/package/@impact0815/node-red-contrib-viessmann)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> **⚠️ Nutzung auf eigene Gefahr – ohne Gewähr.**
-> Dieses Projekt ist ein privates Open-Source-Projekt und steht in keiner Verbindung zur
-> Viessmann Climate Solutions SE. Es wird ohne jede Gewährleistung bereitgestellt. Schreibbefehle
-> verändern die Einstellungen deiner Heizungsanlage. Für Schäden an Anlage, Gebäude oder Daten,
-> für Komfortverlust oder Kosten wird keine Haftung übernommen. Details: [LICENSE](LICENSE).
->
-> **⚠️ Use at your own risk – no warranty.**
-> This is an unofficial community project, not affiliated with Viessmann Climate Solutions SE.
-> It is provided "as is", without warranty of any kind. Write commands change the settings of your
-> heating system. The authors accept no liability for any damage, loss or costs. See [LICENSE](LICENSE).
-
 ---
 
-## Dank an Rustimation.eu
+## Thanks to Rustimation.eu
 
-Dieses Paket gäbe es nicht ohne die ausführliche und geduldig gepflegte Anleitung
-**„Viessmann API und Node-Red – Teil 2 – API Zugriff“** auf
+This package would not exist without the detailed and patiently maintained guide
+**"Viessmann API und Node-Red – Teil 2 – API Zugriff"** on
 [rustimation.eu](https://www.rustimation.eu/index.php/1_zugang_api/).
 
-Dort ist der komplette Weg vom Viessmann-Developer-Konto über Client-ID, Code Challenge und
-Authorization Code bis zum Refresh Token Schritt für Schritt beschrieben – inklusive der Stolpersteine
-bei Docker, Home Assistant, ioBroker und Homematic. Diese Vorarbeit hat den Zugang zur API überhaupt
-erst nachvollziehbar gemacht. **Herzlichen Dank dafür.**
+It describes the complete path from the Viessmann developer account via client ID, code challenge
+and authorization code to the refresh token step by step – including the pitfalls with Docker,
+Home Assistant, ioBroker and Homematic. That groundwork made access to the API understandable in the
+first place. **Many thanks for it.**
 
-Was hier hinzukommt: Der dort aus mehreren Nodes zusammengesteckte Ablauf steckt jetzt in einer
-einzigen Konfigurations-Node – ohne `http in`-Node, ohne manuelles Auslösen und mit der richtigen
-Reihenfolge beim allerersten Start.
+What this package adds: the flow built there from several nodes now lives in one single configuration
+node – without an `http in` node, without manual triggering and with the correct order on the very
+first start.
 
 ---
 
-## Was das Paket kann
+## What the package does
 
-| Node | Aufgabe |
+| Node | Purpose |
 |---|---|
-| **Viessmann API** (Konfiguration) | Vollautomatische Anmeldung und Token-Erneuerung, gemeinsamer Datencache, Freigabe für Schreibzugriffe |
-| **Viessmann lesen** | Datenpunkte abfragen, filtern, in vier Formaten ausgeben, Status und Fehler getrennt |
-| **Viessmann schreiben** | Befehle ausführen, mit Prüfung gegen die echten Wertebereiche der API |
+| **Viessmann API** (configuration) | Fully automatic login and token renewal, shared data cache, permission for write access |
+| **Viessmann read** | Query data points, filter, output in four formats, status and errors separated |
+| **Viessmann write** | Execute commands, checked against the real value ranges of the API |
 
-**Kernidee:** Es gibt keine fest eingebaute Datenpunktliste. Alles wird aus der Antwort der API
-abgeleitet – auch die Schreibbefehle samt Minimum, Maximum, Schrittweite und Auswahllisten. Damit
-funktioniert das Paket mit jedem Viessmann-Gerät, das über die API erreichbar ist, und zeigt jedem
-Nutzer nur das, was **seine** Anlage tatsächlich kann.
+**Core idea:** there is no built-in list of data points. Everything is derived from the API
+response – including the write commands with minimum, maximum, step size and allowed values. This
+makes the package work with any Viessmann device reachable through the API and shows every user only
+what **their** system actually supports.
 
 ---
 
 ## Installation
 
-### Über die Node-RED-Palette
+### Via the Node-RED palette
 
-Menü → *Palette verwalten* → *Installieren* → `@impact0815/node-red-contrib-viessmann`
+Menu → *Manage palette* → *Install* → `@impact0815/node-red-contrib-viessmann`
 
-### Per Kommandozeile
+### Command line
 
 ```bash
 cd ~/.node-red
 npm install @impact0815/node-red-contrib-viessmann
 ```
 
-Im Docker-Container:
+In a Docker container:
 
 ```bash
 docker exec node-red npm install --prefix /data @impact0815/node-red-contrib-viessmann
 docker restart node-red
 ```
 
-### Aus dem Quellcode
+Then reload the editor in the browser with **Ctrl+F5**.
 
-```bash
-git clone https://github.com/impact0815/node-red-contrib-viessmann.git
-cd node-red-contrib-viessmann
-./tools/install-docker.sh node-red        # Containername anpassen
-```
+Requirements: Node-RED 3 or newer, Node.js 18 or newer. No further dependencies.
 
-Danach den Editor im Browser mit **Strg+F5** neu laden.
-
-Voraussetzungen: Node-RED 3 oder neuer, Node.js 18 oder neuer. Keine weiteren Abhängigkeiten.
-
-> **Umstieg von einer lokal installierten Version:** Vorher die alte Installation entfernen
-> (`npm uninstall node-red-contrib-viessmann` im Node-RED-Verzeichnis), sonst meldet Node-RED doppelt
-> registrierte Node-Typen. Flows und gespeicherte Verbindungen bleiben erhalten.
+> **Switching from a locally installed copy:** remove the old installation first
+> (`npm uninstall node-red-contrib-viessmann` in the Node-RED directory), otherwise Node-RED reports
+> duplicate node types. Flows and stored connections are kept.
 
 ---
 
-## Einrichten
+## Setup
 
-### 1. Einmalig im Viessmann Developer Portal
+### 1. Once in the Viessmann Developer Portal
 
-1. Die Anlage muss in der **ViCare-App** registriert sein und dort funktionieren.
-2. Mit denselben Zugangsdaten bei
-   [app.developer.viessmann-climatesolutions.com](https://app.developer.viessmann-climatesolutions.com) anmelden.
-3. Unter *Your Clients* einen Client anlegen:
-   - **Google reCAPTCHA ausschalten** – Pflicht, sonst ist keine automatische Anmeldung möglich.
-   - **Redirect URI** eintragen, z. B. `http://localhost:1880/authcode`.
-4. Speichern – die **Client-ID** wird angezeigt.
+1. The system must be registered in the **ViCare app** and work there.
+2. Log in with the same credentials at
+   [app.developer.viessmann-climatesolutions.com](https://app.developer.viessmann-climatesolutions.com).
+3. Create a client under *Your Clients*:
+   - **Disable Google reCAPTCHA** – mandatory, otherwise no automatic login is possible.
+   - Enter a **redirect URI**, e.g. `http://localhost:1880/authcode`.
+4. Save – the **client ID** is shown.
 
-Wer den Zugang schon nach der Rustimation-Anleitung eingerichtet hat, übernimmt einfach die
-vorhandene Client-ID, Redirect-URI und Code Challenge.
+If you already set up access following the Rustimation guide, simply reuse your existing client ID,
+redirect URI and code challenge.
 
 ### 2. In Node-RED
 
-Eine *Viessmann lesen*-Node auf die Arbeitsfläche ziehen, bei *Verbindung* eine neue Konfiguration
-anlegen und eintragen:
+Drag a *Viessmann read* node onto the workspace, create a new configuration under *Connection* and
+enter:
 
-| Feld | Inhalt |
+| Field | Content |
 |---|---|
-| **Client-ID** | aus dem Developer Portal |
-| **Redirect-URI** | aus dem Portal **kopieren** – muss zeichengenau übereinstimmen |
-| **Code Challenge** | optional – vorhandene übernehmen, mit *erzeugen* neu anlegen oder leer lassen |
-| **Benutzername** | E-Mail-Adresse des ViCare-Kontos |
-| **Passwort** | Passwort des ViCare-Kontos |
+| **Client ID** | from the Developer Portal |
+| **Redirect URI** | **copy** it from the portal – must match exactly |
+| **Code challenge** | optional – reuse an existing one, *generate* a new one or leave empty |
+| **Username** | e-mail address of the ViCare account |
+| **Password** | password of the ViCare account |
 
-**Verbindung testen** klicken – der Test funktioniert schon vor dem ersten Deploy und meldet
-Installation, Gateway und Anzahl der Datenpunkte, etwa *„45 von 106 verfügbar, 13 beschreibbar“*.
-Dann **Fertig** und **Deploy**. Mehr ist nicht zu tun.
+Click **Test connection** – the test works even before the first deploy and reports installation,
+gateway and number of data points, e.g. *"45 of 106 available, 13 writable"*. Then **Done** and
+**Deploy**. That's all.
 
-### Was dabei automatisch passiert
+### What happens automatically
 
 ```
-Refresh Token vorhanden?
- ├─ ja   → Access Token damit holen
- │          └─ von Viessmann abgelehnt? → weiter wie „nein“
- └─ nein → mit Benutzer + Passwort anmelden (GET /authorize, Basic Auth)
-            → Authorization Code aus der Weiterleitung lesen
-            → Code + Code Challenge gegen Access- und Refresh-Token tauschen
-            → Refresh Token verschlüsselt speichern
+Refresh token present?
+ ├─ yes → get access token with it
+ │          └─ rejected by Viessmann? → continue as "no"
+ └─ no  → log in with user + password (GET /authorize, Basic Auth)
+            → read the authorization code from the redirect
+            → exchange code + code challenge for access and refresh token
+            → store the refresh token encrypted
 ```
 
-Das Access Token wird kurz vor Ablauf erneuert, nach einem HTTP 401 sofort. Bei Netzwerkfehlern
-meldet sich die Node bewusst nicht neu an.
+The access token is renewed shortly before expiry, and immediately after an HTTP 401. On network
+errors the node deliberately does not log in again.
 
-Zwei Unterschiede zum ursprünglichen Rustimation-Flow:
+Two differences to the original Rustimation flow:
 
-- **Reihenfolge beim Erststart:** Beim allerersten Start gibt es noch kein Refresh Token. Die Node
-  versucht dann gar nicht erst eine Erneuerung mit leerem Token, sondern meldet sich direkt an.
-- **Kein `http in`-Node nötig:** Die Node folgt der Weiterleitung von Viessmann nicht, sondern liest
-  den Code direkt aus der Antwort. Unter der Redirect-URI muss deshalb nichts lauschen – die bekannten
-  `localhost`-Probleme mit Docker, Home Assistant oder ioBroker entfallen.
+- **Order on first start:** on the very first start there is no refresh token yet. The node does not
+  even try a renewal with an empty token but logs in directly.
+- **No `http in` node needed:** the node does not follow the Viessmann redirect but reads the code
+  directly from the response. Nothing has to listen at the redirect URI – the known `localhost`
+  problems with Docker, Home Assistant or ioBroker disappear.
 
-Benutzername, Passwort, Code Challenge und Token liegen verschlüsselt in den Node-RED-Credentials und
-landen nie in der Flow-Datei oder einem Export.
+Username, password, code challenge and tokens are stored encrypted in the Node-RED credentials and
+never end up in the flow file or an export.
 
 ---
 
-## Beispiel-Flows
+## Language
 
-Im Editor unter *Import → Beispiele → @impact0815/node-red-contrib-viessmann*. Nach dem Import in
-jeder Viessmann-Node die eigene Verbindung auswählen.
-
-| Beispiel | Inhalt |
-|---|---|
-| **01 Erste Schritte** | Rohdaten der eigenen Anlage ansehen; Schreiben im Testlauf (sendet nichts) |
-| **02 Abfrage → MQTT** | Alle 5 Minuten lesen und als `viessmann/sensors`, `/boiler`, `/dhw`, `/circuit` aufbereiten – eine erweiterbare Tabelle statt vieler Function-Nodes |
-| **03 Zirkulationspumpe temporär** | Aktuellen Plan sichern, 20 Minuten Tagesplan, danach automatisch zurück; AUS und Wiederherstellen per Knopf oder Link-In |
-| **04 Warmwasser temporär** | Dasselbe für die Warmwasserbereitung (`heating.dhw.schedule`) |
-
-Die Beispiele 03 und 04 sind gegen Mehrfachauslösung abgesichert: Ein erneutes AN innerhalb der
-20 Minuten verlängert die Zeit, überschreibt aber nicht die Sicherung des eigentlichen Plans.
+Dialogs, help texts, status and error messages follow the language set in Node-RED
+(*User settings → View → Language*). The complete **en-US** catalog is the default and fallback;
+**de** provides the German translation. Translations for further languages are welcome – see
+[Contributing](#contributing).
 
 ---
 
-## Lesen
+## Example flows
 
-**Alle Werte ansehen:** Auswahl *Alle Datenpunkte*, Ausgabe *Rohdaten* – zeigt genau, was die
-eigene Anlage liefert. Das ist auch das beste Mittel für Fehlerberichte.
+In the editor under *Import → Examples → @impact0815/node-red-contrib-viessmann*. After importing,
+select your own connection in every Viessmann node.
 
-**Gezielt Werte holen:** Auswahl *Nur ausgewählte Datenpunkte* → *Datenpunkte vom Gerät laden*.
-✎ markiert beschreibbare, ⚠ veraltete Einträge.
+| Example | Content |
+|---|---|
+| **01 first steps** | View the raw data of your own system; write in dry run (sends nothing) |
+| **02 read → MQTT** | Read every 5 minutes and prepare as `viessmann/sensors`, `/boiler`, `/dhw`, `/circuit` – one extendable table instead of many function nodes |
+| **03 circulation pump temporary** | Save current schedule, 20 minutes daytime schedule, then restore automatically; OFF and restore via button or link in |
+| **04 hot water temporary** | The same for hot water preparation (`heating.dhw.schedule`) |
 
-**In einer Function-Node auswerten** (Ausgabe *Objekt je Datenpunkt*):
+Examples 03 and 04 are protected against repeated triggering: pressing ON again within the
+20 minutes extends the time but does not overwrite the backup of the real schedule.
+
+---
+
+## Reading
+
+**See all values:** selection *All data points*, output *Raw API data* – shows exactly what your
+system delivers. This is also the best material for bug reports.
+
+**Pick specific values:** selection *Selected data points only* → *Load data points from device*.
+✎ marks writable, ⚠ deprecated entries.
+
+**Evaluate in a function node** (output *Object per data point*):
 
 ```javascript
 const f = msg.payload["heating.sensors.temperature.outside"];
-const aussen = f ? f.values.value : null;   // null, wenn das Gerät den Wert nicht liefert
+const outside = f ? f.values.value : null;   // null if the device does not deliver the value
 ```
 
-**An MQTT weitergeben:** Ausgabe *Eine Nachricht je Datenpunkt*, Topic-Präfix z. B. `heizung`:
+**Forward to MQTT:** output *One message per data point*, topic prefix e.g. `heating`:
 
 ```
-heizung/heating.sensors.temperature.outside → 17.3
-heizung/heating.dhw.temperature.main        → 58
+heating/heating.sensors.temperature.outside → 17.3
+heating/heating.dhw.temperature.main        → 58
 ```
 
-Eigenschaften der eingehenden Nachricht (z. B. `msg.action`) werden durchgereicht. So lässt sich
-„erst lesen, dann entscheiden“ in einem Flow abbilden.
+Properties of the incoming message (e.g. `msg.action`) are passed through. This makes
+"read first, then decide" possible within one flow.
 
 ---
 
-## Schreiben
+## Writing
 
-In der Konfiguration **Schreibzugriff erlauben** aktivieren. Welche Befehle die eigene Anlage
-anbietet, zeigt die Schreib-Node nach *Beschreibbare Datenpunkte laden* – samt erlaubter Werte.
-Neue Befehle am besten zuerst mit aktiviertem **Testlauf** ausprobieren.
+Enable **Allow write access** in the configuration. Which commands your system offers is shown by
+the write node after *Load writable data points* – including the allowed values. Try new commands
+with **dry run** enabled first.
 
 ```javascript
-// Warmwasser-Solltemperatur (Grenzen kommen von der API, meist 10–60 °C)
+// Hot water target temperature (limits come from the API, usually 10–60 °C)
 msg.feature = "heating.dhw.temperature.main";
 msg.command = "setTargetTemperature";
 msg.payload = { temperature: 55 };
 
-// Warmwasser sofort einmalig aufheizen (falls vom Gerät angeboten)
+// Heat up hot water once, right now (if offered by the device)
 msg.feature = "heating.dhw.oneTimeCharge";
 msg.command = "activate";
 msg.payload = {};
 
-// Betriebsart des Heizkreises 0
+// Operating mode of heating circuit 0
 msg.feature = "heating.circuits.0.operating.modes.active";
 msg.command = "setMode";
 msg.payload = { mode: "dhwAndHeating" };
 
-// Heizkurve
+// Heating curve
 msg.feature = "heating.circuits.0.heating.curve";
 msg.command = "setCurve";
 msg.payload = { slope: 0.6, shift: 2 };
 
-// Zirkulationspumpe dauerhaft aus (leerer Zeitplan)
+// Circulation pump permanently off (empty schedule)
 msg.feature = "heating.dhw.pumps.circulation.schedule";
 msg.command = "setSchedule";
 msg.payload = { newSchedule: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] } };
 
-// Urlaubsprogramm
+// Holiday program
 msg.feature = "heating.operating.programs.holiday";
 msg.command = "schedule";
 msg.payload = { start: "2026-12-20", end: "2027-01-03" };
 ```
 
-| Schutzmechanismus | Wirkung |
+| Safety mechanism | Effect |
 |---|---|
-| Standardmäßig aus | Ohne Freigabe in der Konfiguration wird nichts geschrieben |
-| Positivliste durch die API | Nur Befehle, die das Gerät für diesen Datenpunkt anbietet |
-| Wertebereiche | Min, Max, Schrittweite, Auswahllisten und Muster werden vorab geprüft |
-| Nur bei Änderung | Liegt der Zielwert schon an, passiert nichts (`skipped: true`) – auch bei Zeitplänen |
-| Mindestabstand | Einstellbare Sperre gegen Schreibschleifen |
-| Testlauf | Alles prüfen, nichts senden |
-| Getrennte Ausgänge | Antworten und Fehler laufen nie im Datenstrom der Messwerte |
+| Off by default | Nothing is written without permission in the configuration |
+| Allow list by the API | Only commands the device offers for this data point |
+| Value ranges | Min, max, step size, allowed values and patterns are checked beforehand |
+| Only on change | If the target value is already set, nothing happens (`skipped: true`) – also for schedules |
+| Minimum interval | Configurable lock against write loops |
+| Dry run | Check everything, send nothing |
+| Separate outputs | Responses and errors never run in the data stream of measured values |
 
-Zeitpläne werden immer vollständig ersetzt (meist höchstens 4 Einträge pro Tag, 10-Minuten-Raster).
-Ein geänderter Warmwasser-Zeitplan startet das Aufheizen nur, wenn der Speicher unter dem Sollwert
-liegt; für sofortiges Aufheizen gibt es `heating.dhw.oneTimeCharge`.
+Schedules are always replaced completely (usually at most 4 entries per day, 10-minute grid). A
+changed hot water schedule only starts heating if the cylinder is below the target temperature; for
+immediate heating there is `heating.dhw.oneTimeCharge`.
 
 ---
 
-## Nicht jedes Gerät kann alles
+## Not every device supports everything
 
-Die API liefert für jede Anlage dieselbe große Liste und markiert mit `isEnabled: false`, was das
-Gerät nicht unterstützt.
+The API returns the same large list for every system and marks with `isEnabled: false` what the
+device does not support.
 
-| Zustand | Bedeutung |
+| State | Meaning |
 |---|---|
-| `available: true` | Gerät unterstützt den Datenpunkt **und** liefert Werte |
-| `isEnabled: false` | Gerät hat diese Funktion nicht (z. B. Solar ohne Solaranlage) |
-| `empty: true` | Datenpunkt vorhanden, aber gerade ohne Inhalt |
+| `available: true` | Device supports the data point **and** delivers values |
+| `isEnabled: false` | Device does not have this function (e.g. solar without a solar system) |
+| `empty: true` | Data point exists but currently has no content |
 
-Veraltete Datenpunkte nennen ihren Nachfolger, etwa `heating.dhw.sensors.temperature.hotWaterStorage`
-→ `heating.dhw.sensors.temperature.dhwCylinder` oder `heating.boiler.serial` → `device.serial`.
-Eigene Auswertungen sollten zuerst den neuen, dann den alten Namen probieren – so macht es auch
-Beispiel 02.
-
----
-
-## Abfrageintervall und Rate Limit
-
-Die API hat ein Tageslimit, und die Anlage liefert ohnehin nur alle paar Minuten neue Werte.
-Empfohlen sind **300 Sekunden** Intervall und **30 Sekunden** Cache. Mehrere Lese-Nodes sollten sich
-**eine** Verbindung teilen – der gemeinsame Cache holt die Daten dann nur einmal. Beim Umstieg von
-einem alten Flow die alten Abfrage- und Token-Nodes deaktivieren, sonst wird doppelt abgefragt.
+Deprecated data points name their successor, e.g. `heating.dhw.sensors.temperature.hotWaterStorage`
+→ `heating.dhw.sensors.temperature.dhwCylinder` or `heating.boiler.serial` → `device.serial`. Your
+own evaluations should try the new name first and then the old one – example 02 does exactly that.
 
 ---
 
-## Symptom → Ursache → Lösung
+## Polling interval and rate limit
 
-| Symptom | Ursache | Lösung |
+The API has a daily limit, and the system only delivers new values every few minutes anyway.
+Recommended: **300 seconds** interval and **30 seconds** cache. Several read nodes should share
+**one** connection – the shared cache then fetches the data only once. When migrating from an old
+flow, disable the old polling and token nodes, otherwise everything is queried twice.
+
+---
+
+## Symptom → cause → solution
+
+| Symptom | Cause | Solution |
 |---|---|---|
-| „Invalid redirection URI“ | Redirect-URI weicht vom Portal ab | Die Meldung zeigt die gesendete Adresse – mit dem Portal vergleichen und von dort kopieren |
-| „Viessmann verlangt eine interaktive Anmeldung“ | reCAPTCHA im Portal aktiv oder Redirect-URI weicht ab | reCAPTCHA ausschalten, Redirect-URI abgleichen |
-| „Anmeldung abgelehnt (HTTP 401)“ | Benutzername oder Passwort falsch | ViCare-Zugangsdaten prüfen |
-| „Code-Einlösung fehlgeschlagen“ | Redirect-URI oder Client-ID abweichend | Beide mit dem Portal abgleichen |
-| „Die Code Challenge ist ungültig“ | zu kurz oder unerlaubte Zeichen | *erzeugen* klicken oder Feld leeren |
-| „Keine Installation gefunden“ | Anlage nicht in ViCare registriert, anderes Konto | ViCare-App prüfen |
-| `HTTP 429` | zu viele Abfragen | Intervall und Cache erhöhen, alte Flows abschalten |
-| `Zeitüberschreitung` | kein Internet aus dem Container | `docker exec node-red ping -c1 api.viessmann-climatesolutions.com` |
-| „Schreiben ist deaktiviert“ | Freigabe fehlt | *Schreibzugriff erlauben* setzen |
-| Verbindung im importierten Flow fehlt | Beispiele enthalten bewusst keine Verbindung | In jeder Viessmann-Node die eigene Verbindung wählen |
-| Node-Typen doppelt registriert | alte lokale Installation noch vorhanden | `npm uninstall node-red-contrib-viessmann`, Node-RED neu starten |
-| Neue Felder fehlen im Editor | Browser-Cache | Strg+F5 |
-| Geschriebener Wert erscheint nicht beim Lesen | Anlage braucht ein bis zwei Minuten | kurz warten |
+| "Invalid redirection URI" | Redirect URI differs from the portal | The message shows the address that was sent – compare it with the portal and copy it from there |
+| "Viessmann requires an interactive login" | reCAPTCHA active in the portal, wrong credentials or redirect URI differs | Disable reCAPTCHA, check credentials and redirect URI |
+| "Login rejected (HTTP 401)" | Username or password is incorrect | Check ViCare credentials |
+| "Redeeming the authorization code failed" | Redirect URI or client ID differ | Compare both with the portal |
+| "Invalid code challenge" | Too short or forbidden characters | Click *generate* or clear the field |
+| "No installation found" | System not registered in ViCare, different account | Check the ViCare app |
+| `HTTP 429` | Too many requests | Increase interval and cache, switch off old flows |
+| Timeout | No internet from the container | `docker exec node-red ping -c1 api.viessmann-climatesolutions.com` |
+| "Writing is disabled" | Permission missing | Enable *Allow write access* |
+| Connection missing in imported flow | Examples deliberately contain no connection | Select your own connection in every Viessmann node |
+| Node types registered twice | Old local installation still present | `npm uninstall node-red-contrib-viessmann`, restart Node-RED |
+| Texts appear in the wrong language | Node-RED language setting | *User settings → View → Language*, then reload the browser |
+| New fields missing in the editor | Browser cache | Ctrl+F5 |
+| Written value not visible when reading | System needs one to two minutes | Wait a moment |
 
 ---
 
-## Entwicklung
+## Contributing
 
 ```bash
-npm test      # Tests gegen einen simulierten Viessmann-Server inkl. Identity Provider
-npm run lint  # Syntax, Editor-Dateien, Paketangaben und Beispiel-Flows
+npm test      # tests against a simulated Viessmann server incl. identity provider and translations
+npm run lint  # syntax, editor files, locales, package fields and example flows
 ```
 
-Der Simulator in `test/mock-server.js` bildet auch die Sonderfälle ab: Erststart ohne Token,
-abgelehntes Refresh Token, falsches Passwort, aktives reCAPTCHA, abweichende oder kodierte
-Redirect-URI, rotierende Token, HTTP 401, Rate Limit und Netzwerkfehler. Es werden keine
-Laufzeitabhängigkeiten benötigt.
+The simulator in `test/mock-server.js` also covers the special cases: first start without token,
+rejected refresh token, wrong password, active reCAPTCHA, different or encoded redirect URI, rotating
+tokens, HTTP 401, rate limit and network errors. `test/i18n.test.js` makes sure English and German
+always have the same keys and placeholders.
 
-Fehlerberichte und Wünsche bitte als
-[Issue](https://github.com/impact0815/node-red-contrib-viessmann/issues) – idealerweise mit den
-Rohdaten der eigenen Anlage (Beispiel 01), bei denen Seriennummern unkenntlich gemacht sind.
+**Adding a language:** copy `nodes/locales/en-US/` to `nodes/locales/<code>/` (e.g. `fr`), translate
+the three `.json` and three `.html` files and add the code to `LANGS` in `test/i18n.test.js` and
+`tools/lint.js`.
+
+Bug reports and wishes please as an
+[issue](https://github.com/impact0815/node-red-contrib-viessmann/issues) – ideally with the raw data
+of your own system (example 01) with serial numbers made unrecognizable.
 
 ---
 
-## Quellen
+## Sources
 
-- [Rustimation.eu – Viessmann API und Node-Red](https://www.rustimation.eu/index.php/1_zugang_api/) – die Grundlage für den API-Zugang
-- [Viessmann API Dokumentation](https://api.viessmann-climatesolutions.com/documentation)
+- [Rustimation.eu – Viessmann API und Node-Red](https://www.rustimation.eu/index.php/1_zugang_api/) – the basis for the API access
+- [Viessmann API documentation](https://api.viessmann-climatesolutions.com/documentation)
 - [Viessmann Developer Portal](https://app.developer.viessmann-climatesolutions.com)
 
----
+## License
 
-## Haftungsausschluss / Disclaimer
-
-Nutzung auf eigene Gefahr. Dieses Paket ist kein offizielles Produkt von Viessmann und wird ohne
-Gewährleistung bereitgestellt. Die Viessmann-API kann sich jederzeit ändern, eingeschränkt oder
-abgeschaltet werden. Prüfe Schreibbefehle zuerst im Testlauf und behalte die Anlage im Blick.
-Alle Marken gehören ihren jeweiligen Inhabern.
-
-Use at your own risk. This package is not an official Viessmann product and comes without any
-warranty. The Viessmann API may change, be restricted or discontinued at any time. All trademarks
-belong to their respective owners.
-
-## Lizenz / License
-
-MIT – siehe [LICENSE](LICENSE). Die Lizenz schließt Gewährleistung und Haftung ausdrücklich aus.
+MIT – see [LICENSE](LICENSE). The license expressly excludes warranty and liability.

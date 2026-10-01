@@ -25,7 +25,7 @@
             "account": "ViCare-Konto",
             "system": "Anlage",
             "systemHint": "(leer lassen = automatisch ermitteln)",
-            "behaviour": "Verhalten",
+            "behavior": "Verhalten",
             "advanced": "Erweiterte Einstellungen (Endpunkte)"
         },
         "hint": {

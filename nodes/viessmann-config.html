@@ -26,8 +26,10 @@
         },
         oneditprepare: function () {
             var nodeId = this.id;
+            var _ = this._;
+            var esc = function (s) { return $('<div>').text(String(s)).html(); };
 
-            // Code Challenge: 43–128 Zeichen aus A–Z a–z 0–9 - . _ ~
+            // Code challenge: 43–128 characters from A–Z a–z 0–9 - . _ ~
             $('#vm-gen-challenge').on('click', function () {
                 var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
                 var bytes = new Uint8Array(64);
@@ -35,13 +37,13 @@
                 var out = '';
                 for (var i = 0; i < bytes.length; i++) out += chars.charAt(bytes[i] % chars.length);
                 $('#node-config-input-codeChallenge').val(out).trigger('change');
-                $('#vm-challenge-info').css('color', '#2e7d32').text('Neue Code Challenge erzeugt (64 Zeichen).');
+                $('#vm-challenge-info').css('color', '#2e7d32').text(_('viessmann-config.editor.challengeGenerated'));
             });
 
             $('#viessmann-test').on('click', function () {
                 var $r = $('#viessmann-test-result');
                 $('#viessmann-test').prop('disabled', true);
-                $r.css('color', '#888').html('<i class="fa fa-spinner fa-spin"></i> Melde mich bei Viessmann an …');
+                $r.css('color', '#888').html('<i class="fa fa-spinner fa-spin"></i> ' + esc(_('viessmann-config.editor.testing')));
 
                 $.ajax({
                     url: 'viessmann/test',
@@ -63,19 +65,20 @@
                 }).done(function (d) {
                     if (d.ok) {
                         $r.css('color', '#2e7d32').html(
-                            '<b><i class="fa fa-check-circle"></i> Verbindung steht.</b><br>' +
-                            'Installation: ' + d.targets.installationId +
-                            '<br>Gateway: ' + d.targets.gatewaySerial +
-                            '<br>Gerät: ' + d.targets.deviceId +
-                            '<br>Datenpunkte: ' + d.summary.available + ' von ' + d.summary.total +
-                            ' verfügbar, ' + d.summary.writable + ' beschreibbar.'
+                            '<b><i class="fa fa-check-circle"></i> ' + esc(_('viessmann-config.editor.connected')) + '</b><br>' +
+                            esc(_('viessmann-config.editor.installation')) + ': ' + esc(d.targets.installationId) + '<br>' +
+                            esc(_('viessmann-config.editor.gateway')) + ': ' + esc(d.targets.gatewaySerial) + '<br>' +
+                            esc(_('viessmann-config.editor.device')) + ': ' + esc(d.targets.deviceId) + '<br>' +
+                            esc(_('viessmann-config.editor.datapoints', d.summary))
                         );
                     } else {
-                        var done = (d.steps && d.steps.length) ? ('Erledigt: ' + d.steps.join(' → ') + '<br>') : '';
-                        $r.css('color', '#c62828').html(done + '<b>Fehler:</b> ' + $('<div>').text(d.error).html());
+                        var done = (d.steps && d.steps.length)
+                            ? (esc(_('viessmann-config.editor.done')) + ': ' + esc(d.steps.join(' → ')) + '<br>') : '';
+                        $r.css('color', '#c62828').html(done + '<b>' + esc(_('viessmann-config.editor.error')) + ':</b> ' + esc(d.error));
                     }
                 }).fail(function (x) {
-                    $r.css('color', '#c62828').text('Fehler: ' + ((x.responseJSON && x.responseJSON.error) || x.statusText));
+                    $r.css('color', '#c62828').text(_('viessmann-config.editor.error') + ': ' +
+                        ((x.responseJSON && x.responseJSON.error) || x.statusText));
                 }).always(function () {
                     $('#viessmann-test').prop('disabled', false);
                 });
@@ -86,209 +89,97 @@
 
 <script type="text/html" data-template-name="viessmann-config">
     <div class="form-row">
-        <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-config-input-name" placeholder="z. B. Vitodens Keller">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> <span data-i18n="viessmann-config.label.name"></span></label>
+        <input type="text" id="node-config-input-name" data-i18n="[placeholder]viessmann-config.placeholder.name">
     </div>
 
     <hr>
-    <h4 style="margin-bottom:4px">Viessmann Developer Portal</h4>
-    <div style="font-size:0.88em;color:#666;margin-bottom:8px">
-        Aus dem <a href="https://app.developer.viessmann-climatesolutions.com" target="_blank" rel="noopener">Developer
-        Portal</a> (<i>Your Clients</i>). Dort muss <b>Google reCAPTCHA ausgeschaltet</b> sein.
+    <h4 style="margin-bottom:4px" data-i18n="viessmann-config.section.portal"></h4>
+    <div style="font-size:0.88em;color:#666;margin-bottom:8px" data-i18n="[html]viessmann-config.hint.portal"></div>
+    <div class="form-row">
+        <label for="node-config-input-clientId"><i class="fa fa-id-card"></i> <span data-i18n="viessmann-config.label.clientId"></span></label>
+        <input type="text" id="node-config-input-clientId" data-i18n="[placeholder]viessmann-config.placeholder.clientId">
     </div>
     <div class="form-row">
-        <label for="node-config-input-clientId"><i class="fa fa-id-card"></i> Client-ID</label>
-        <input type="text" id="node-config-input-clientId" placeholder="z. B. 4e1a9c…">
+        <label for="node-config-input-redirectUri"><i class="fa fa-reply"></i> <span data-i18n="viessmann-config.label.redirectUri"></span></label>
+        <input type="text" id="node-config-input-redirectUri" data-i18n="[placeholder]viessmann-config.placeholder.redirectUri">
     </div>
+    <div class="form-tips" style="margin-bottom:12px;font-size:0.85em" data-i18n="[html]viessmann-config.hint.redirectUri"></div>
     <div class="form-row">
-        <label for="node-config-input-redirectUri"><i class="fa fa-reply"></i> Redirect-URI</label>
-        <input type="text" id="node-config-input-redirectUri" placeholder="http://localhost:1880/authcode">
-    </div>
-    <div class="form-tips" style="margin-bottom:12px;font-size:0.85em">
-        Aus dem Portal <b>kopieren und einfügen</b>, nicht abtippen – sie muss zeichengenau übereinstimmen.
-        Unter dieser Adresse muss nichts lauschen; die Node liest den Code direkt aus der Antwort von Viessmann.
-    </div>
-    <div class="form-row">
-        <label for="node-config-input-codeChallenge"><i class="fa fa-key"></i> Code Challenge</label>
-        <input type="password" id="node-config-input-codeChallenge" style="width:calc(70% - 110px)" placeholder="leer = automatisch">
+        <label for="node-config-input-codeChallenge"><i class="fa fa-key"></i> <span data-i18n="viessmann-config.label.codeChallenge"></span></label>
+        <input type="password" id="node-config-input-codeChallenge" style="width:calc(70% - 110px)" data-i18n="[placeholder]viessmann-config.placeholder.codeChallenge">
         <button type="button" class="red-ui-button" id="vm-gen-challenge" style="width:100px">
-            <i class="fa fa-random"></i> erzeugen
+            <i class="fa fa-random"></i> <span data-i18n="viessmann-config.button.generate"></span>
         </button>
     </div>
-    <div id="vm-challenge-info" class="form-tips" style="margin-bottom:12px;font-size:0.85em">
-        43 bis 128 Zeichen aus Buchstaben, Ziffern und <code>- . _ ~</code>. Bleibt das Feld leer,
-        erzeugt die Node bei jeder Anmeldung selbst eine.
-    </div>
+    <div id="vm-challenge-info" class="form-tips" style="margin-bottom:12px;font-size:0.85em" data-i18n="[html]viessmann-config.hint.codeChallenge"></div>
 
     <hr>
-    <h4 style="margin-bottom:4px">ViCare-Konto</h4>
-    <div style="font-size:0.88em;color:#666;margin-bottom:8px">
-        Dieselben Zugangsdaten wie in der ViCare-App.
+    <h4 style="margin-bottom:4px" data-i18n="viessmann-config.section.account"></h4>
+    <div style="font-size:0.88em;color:#666;margin-bottom:8px" data-i18n="viessmann-config.hint.account"></div>
+    <div class="form-row">
+        <label for="node-config-input-username"><i class="fa fa-user"></i> <span data-i18n="viessmann-config.label.username"></span></label>
+        <input type="text" id="node-config-input-username" autocomplete="off" data-i18n="[placeholder]viessmann-config.placeholder.username">
     </div>
     <div class="form-row">
-        <label for="node-config-input-username"><i class="fa fa-user"></i> Benutzername</label>
-        <input type="text" id="node-config-input-username" placeholder="E-Mail-Adresse" autocomplete="off">
-    </div>
-    <div class="form-row">
-        <label for="node-config-input-password"><i class="fa fa-lock"></i> Passwort</label>
+        <label for="node-config-input-password"><i class="fa fa-lock"></i> <span data-i18n="viessmann-config.label.password"></span></label>
         <input type="password" id="node-config-input-password" autocomplete="new-password">
     </div>
 
     <div class="form-row">
         <button type="button" class="red-ui-button" id="viessmann-test" style="width:100%">
-            <i class="fa fa-plug"></i> Verbindung testen
+            <i class="fa fa-plug"></i> <span data-i18n="viessmann-config.button.test"></span>
         </button>
         <div id="viessmann-test-result" style="margin-top:8px;font-size:0.9em;line-height:1.5"></div>
     </div>
 
     <hr>
-    <h4>Anlage <small style="font-weight:normal">(leer lassen = automatisch ermitteln)</small></h4>
+    <h4><span data-i18n="viessmann-config.section.system"></span> <small style="font-weight:normal" data-i18n="viessmann-config.section.systemHint"></small></h4>
     <div class="form-row">
-        <label for="node-config-input-installationId"><i class="fa fa-home"></i> Installation</label>
-        <input type="text" id="node-config-input-installationId" placeholder="automatisch">
+        <label for="node-config-input-installationId"><i class="fa fa-home"></i> <span data-i18n="viessmann-config.label.installation"></span></label>
+        <input type="text" id="node-config-input-installationId" data-i18n="[placeholder]viessmann-config.placeholder.auto">
     </div>
     <div class="form-row">
-        <label for="node-config-input-gatewaySerial"><i class="fa fa-wifi"></i> Gateway</label>
-        <input type="text" id="node-config-input-gatewaySerial" placeholder="automatisch">
+        <label for="node-config-input-gatewaySerial"><i class="fa fa-wifi"></i> <span data-i18n="viessmann-config.label.gateway"></span></label>
+        <input type="text" id="node-config-input-gatewaySerial" data-i18n="[placeholder]viessmann-config.placeholder.auto">
     </div>
     <div class="form-row">
-        <label for="node-config-input-deviceId"><i class="fa fa-microchip"></i> Gerät</label>
+        <label for="node-config-input-deviceId"><i class="fa fa-microchip"></i> <span data-i18n="viessmann-config.label.device"></span></label>
         <input type="text" id="node-config-input-deviceId" placeholder="0">
     </div>
 
     <hr>
-    <h4>Verhalten</h4>
+    <h4 data-i18n="viessmann-config.section.behavior"></h4>
     <div class="form-row">
-        <label for="node-config-input-cacheTtl"><i class="fa fa-clock-o"></i> Cache</label>
-        <input type="number" id="node-config-input-cacheTtl" min="0" style="width:80px"> Sekunden
+        <label for="node-config-input-cacheTtl"><i class="fa fa-clock-o"></i> <span data-i18n="viessmann-config.label.cache"></span></label>
+        <input type="number" id="node-config-input-cacheTtl" min="0" style="width:80px"> <span data-i18n="viessmann-config.label.seconds"></span>
     </div>
     <div class="form-row">
-        <label for="node-config-input-timeout"><i class="fa fa-hourglass-half"></i> Timeout</label>
-        <input type="number" id="node-config-input-timeout" min="1000" step="1000" style="width:100px"> ms
+        <label for="node-config-input-timeout"><i class="fa fa-hourglass-half"></i> <span data-i18n="viessmann-config.label.timeout"></span></label>
+        <input type="number" id="node-config-input-timeout" min="1000" step="1000" style="width:100px"> <span data-i18n="viessmann-config.label.ms"></span>
     </div>
     <div class="form-row">
         <label for="node-config-input-allowWrite" style="width:auto">
             <input type="checkbox" id="node-config-input-allowWrite" style="width:auto;vertical-align:top">
-            <b>Schreibzugriff erlauben</b>
+            <b data-i18n="viessmann-config.label.allowWrite"></b>
         </label>
     </div>
     <div class="form-row">
-        <label for="node-config-input-minWriteInterval"><i class="fa fa-shield"></i> Schreibsperre</label>
-        <input type="number" id="node-config-input-minWriteInterval" min="0" style="width:80px"> Sekunden Mindestabstand
+        <label for="node-config-input-minWriteInterval"><i class="fa fa-shield"></i> <span data-i18n="viessmann-config.label.minWriteInterval"></span></label>
+        <input type="number" id="node-config-input-minWriteInterval" min="0" style="width:80px"> <span data-i18n="viessmann-config.label.secondsGap"></span>
     </div>
 
     <hr>
     <details>
-        <summary>Erweiterte Einstellungen (Endpunkte)</summary>
+        <summary data-i18n="viessmann-config.section.advanced"></summary>
         <div class="form-row" style="margin-top:8px">
-            <label for="node-config-input-iamHost">IAM-Host</label>
+            <label for="node-config-input-iamHost" data-i18n="viessmann-config.label.iamHost"></label>
             <input type="text" id="node-config-input-iamHost">
         </div>
         <div class="form-row">
-            <label for="node-config-input-apiHost">API-Host</label>
+            <label for="node-config-input-apiHost" data-i18n="viessmann-config.label.apiHost"></label>
             <input type="text" id="node-config-input-apiHost">
         </div>
     </details>
     <input type="password" id="node-config-input-refreshToken" style="display:none">
-</script>
-
-<script type="text/html" data-help-name="viessmann-config">
-    <p>Zentrale Verbindung zur Viessmann IoT API. Die Node meldet sich <b>vollautomatisch</b> an,
-    holt und erneuert alle Token selbst und teilt einen gemeinsamen Datencache mit allen Lese- und
-    Schreib-Nodes.</p>
-
-    <h3>Voraussetzungen</h3>
-    <ol>
-        <li>Die Anlage ist in der <b>ViCare-App</b> registriert und funktioniert dort.</li>
-        <li>Im <a href="https://app.developer.viessmann-climatesolutions.com" target="_blank" rel="noopener">Viessmann
-        Developer Portal</a> (Anmeldung mit denselben Zugangsdaten wie ViCare) existiert unter
-        <i>Your Clients</i> ein Client mit <b>ausgeschaltetem Google reCAPTCHA</b> und einer
-        Redirect-URI, z. B. <code>http://localhost:1880/authcode</code>.</li>
-    </ol>
-    <p>Wer den Zugang schon nach der Rustimation-Anleitung eingerichtet hat, übernimmt einfach die
-    vorhandene Client-ID, Redirect-URI und Code Challenge.</p>
-
-    <h3>Was eingetragen werden muss</h3>
-    <dl class="message-properties">
-        <dt>Client-ID</dt>
-        <dd>Aus dem Developer Portal. Pro Konto ist genau ein Client möglich.</dd>
-
-        <dt>Redirect-URI</dt>
-        <dd>Genau die Adresse, die beim Client im Portal hinterlegt ist – <b>zeichengenau</b>, inklusive
-        <code>http</code>/<code>https</code>, Hostname, Port, Pfad und ggf. abschließendem Schrägstrich.
-        Am sichersten aus dem Portal kopieren. Unter dieser Adresse muss <b>nichts</b> lauschen:
-        Die Node folgt der Weiterleitung von Viessmann nicht, sondern liest den Code direkt aus der
-        Antwort. Deshalb funktioniert das auch in Docker, Home Assistant oder ioBroker, ohne dass
-        Ports oder Pfade freigegeben werden müssen.</dd>
-
-        <dt>Code Challenge</dt>
-        <dd>Das PKCE-Geheimnis der Anmeldung. Eine vorhandene aus einem bestehenden Flow übernehmen,
-        mit <b>erzeugen</b> neu anlegen oder leer lassen – dann erzeugt die Node bei jeder Anmeldung
-        selbst eine frische.</dd>
-
-        <dt>Benutzername / Passwort</dt>
-        <dd>Die Zugangsdaten der <b>ViCare-App</b>. Beides wird verschlüsselt in den Node-RED-Credentials
-        gespeichert und landet nie in der Flow-Datei oder einem Export.</dd>
-    </dl>
-    <p>Danach <b>Verbindung testen</b> – das funktioniert schon vor dem ersten Deploy und meldet bei
-    Erfolg Installation, Gateway, Gerät und die Zahl der verfügbaren Datenpunkte.</p>
-
-    <h3>Was die Node daraus automatisch macht</h3>
-    <ol>
-        <li><b>Refresh Token vorhanden?</b> Dann wird damit ein Access Token geholt.</li>
-        <li><b>Kein Refresh Token</b> (Erststart) oder von Viessmann <b>abgelehnt</b>? Dann meldet sich die
-        Node mit Benutzer und Passwort an, liest den Authorization Code aus der Weiterleitung und tauscht
-        ihn gegen neue Token.</li>
-        <li>Das Access Token wird kurz vor Ablauf erneuert, nach einem HTTP 401 sofort.</li>
-        <li>Bei Netzwerkfehlern wird <b>nicht</b> neu angemeldet – das würde nichts ändern.</li>
-    </ol>
-
-    <h3>Weitere Einstellungen</h3>
-    <dl class="message-properties">
-        <dt>Installation / Gateway / Gerät</dt>
-        <dd>Leer lassen – die Node ermittelt die Werte selbst. Gerät <code>0</code> ist bei
-        Vitoconnect-Anlagen der Regler. Nur bei mehreren Anlagen lohnt eine feste Angabe.</dd>
-        <dt>Cache</dt>
-        <dd>So lange wird eine bereits geholte Datenliste wiederverwendet. Empfehlung: mindestens
-        <b>30 Sekunden</b>. Die API hat ein Tageslimit, und alle Lese-Nodes an dieser Konfiguration
-        teilen sich den Cache.</dd>
-        <dt>Schreibzugriff erlauben</dt>
-        <dd>Standardmäßig aus. Erst mit diesem Haken führt die Schreib-Node Befehle aus. So kann ein
-        versehentlich importierter Flow nichts an der Heizung verstellen.</dd>
-        <dt>Schreibsperre</dt>
-        <dd>Mindestabstand zwischen zwei Schreibvorgängen, schützt vor Endlosschleifen. 5 bis 10 Sekunden
-        sind sinnvoll.</dd>
-    </dl>
-
-    <h3>Symptom → Ursache → Lösung</h3>
-    <dl class="message-properties">
-        <dt>„Invalid redirection URI“</dt>
-        <dd>Die Redirect-URI weicht von der im Portal ab. Die Fehlermeldung zeigt die gesendete Adresse –
-        mit dem Portal vergleichen und von dort kopieren.</dd>
-        <dt>„Viessmann verlangt eine interaktive Anmeldung“</dt>
-        <dd>Google reCAPTCHA ist im Portal noch aktiv, oder die Redirect-URI weicht ab.</dd>
-        <dt>„Anmeldung abgelehnt (HTTP 401)“</dt>
-        <dd>ViCare-Benutzername oder Passwort falsch.</dd>
-        <dt>„Code-Einlösung fehlgeschlagen“</dt>
-        <dd>Meist eine abweichende Redirect-URI oder Client-ID.</dd>
-        <dt>„Die Code Challenge ist ungültig“</dt>
-        <dd>Zu kurz oder unerlaubte Zeichen. Neu erzeugen oder leer lassen.</dd>
-        <dt>„Keine Installation gefunden“</dt>
-        <dd>Anlage nicht in der ViCare-App registriert oder anderes Konto verwendet.</dd>
-        <dt>HTTP 429</dt>
-        <dd>Rate Limit. Intervall und Cache erhöhen, eine gemeinsame Konfiguration nutzen. Alte Flows,
-        die parallel noch selbst abfragen, deaktivieren.</dd>
-        <dt>Zeitüberschreitung / Netzwerkfehler</dt>
-        <dd>Kein Internet aus dem Container. Test:
-        <code>docker exec node-red ping -c1 api.viessmann-climatesolutions.com</code></dd>
-    </dl>
-
-    <h3>Haftungsausschluss</h3>
-    <p><b>Nutzung auf eigene Gefahr, ohne Gewähr.</b> Inoffizielles Projekt, keine Verbindung zu
-    Viessmann. Schreibbefehle verändern die Einstellungen der Heizungsanlage; für Schäden oder Kosten
-    wird keine Haftung übernommen. <i>Use at your own risk – no warranty.</i></p>
-
-    <p><i>Der Zugangsweg zur API folgt der Anleitung von
-    <a href="https://www.rustimation.eu/index.php/1_zugang_api/" target="_blank" rel="noopener">Rustimation.eu</a>.
-    Vielen Dank für diese Vorarbeit.</i></p>
 </script>
